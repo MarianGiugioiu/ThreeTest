@@ -21,7 +21,10 @@
     "@angular/router": "~12.0.1",
     "dat.gui": "^0.7.9",
     "rxjs": "~6.6.0",
+    "simplex-noise": "^4.0.1",
     "three": "^0.146.0",
+    "three-buffer-geometry-utils": "^1.0.0",
+    "three-noise": "^1.1.2",
     "tslib": "^2.1.0",
     "zone.js": "~0.11.4"
   },

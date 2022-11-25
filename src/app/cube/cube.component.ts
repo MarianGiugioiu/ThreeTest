@@ -25,6 +25,12 @@ export class CubeComponent implements OnInit {
 
   private options: any;
 
+  widthRatio: number;
+  heightRatio: number;
+
+  rayCaster: THREE.Raycaster;
+  mousePosition: THREE.Vector2;
+
   constructor() { }
 
   ngOnInit(): void {
@@ -33,6 +39,8 @@ export class CubeComponent implements OnInit {
   ngAfterViewInit() {
     this.canvas.width = 1280 * 2;
     this.canvas.height = 739 * 2;
+    this.widthRatio = this.canvas.width / window.innerWidth;
+    this.heightRatio = this.canvas.height / window.innerHeight;
 
     this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
     this.renderer.shadowMap.enabled = true;
@@ -155,7 +163,24 @@ export class CubeComponent implements OnInit {
     this.gui.add(this.options, 'penumbra', 0, 1);
     this.gui.add(this.options, 'intensity', 0, 1);
 
+    this.mousePosition = new THREE.Vector2();
+
+    console.log(this.scene.children);
+    
+
+    window.addEventListener('mousemove', e => {
+      this.mousePosition.x = (e.clientX / window.innerWidth) * 2 - 1;
+      this.mousePosition.y = (e.clientY / window.innerHeight) * 2 - 1;
+      //this.mousePosition.x = 0;
+      //this.mousePosition.y = 0;
+      //console.log(this.mousePosition);
+      
+    })
+
+    this.rayCaster = new THREE.Raycaster();
+
     this.renderer.setAnimationLoop((time) => {
+      this.animateRayCaster();
       this.animateBox(time, box);
       this.animateSphere(time, sphere);
       this.animateSun(time, sun);
@@ -167,6 +192,17 @@ export class CubeComponent implements OnInit {
     spotLight.intensity = this.options.intensity * 10;
 
     //spotLightHelper.update();
+  }
+
+  animateRayCaster() {
+    this.rayCaster.setFromCamera(this.mousePosition, this.camera);
+    const intersects = this.rayCaster.intersectObjects(this.scene.children);
+    
+    if (intersects.length) {
+      console.log(intersects);
+      
+    }
+    
   }
 
   animateSphere(time, sphere) {
