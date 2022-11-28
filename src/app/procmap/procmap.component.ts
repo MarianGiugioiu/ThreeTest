@@ -4,6 +4,7 @@ import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { createNoise2D } from 'simplex-noise';
+import { RGBELoader } from 'three-stdlib/loaders/RGBELoader';
 
 const MAX_HEIGHT = 10;
 const STONE_HEIGHT = MAX_HEIGHT * 0.8;
@@ -33,7 +34,7 @@ export class ProcmapComponent implements OnInit {
   sandGeo;
   grassGeo;
 
-  hexTexture;
+  envmap;
 
   private gui: dat.GUI;
 
@@ -55,7 +56,8 @@ export class ProcmapComponent implements OnInit {
     this.heightRatio = this.canvas.height / window.innerHeight;
 
     this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
-    //this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer.physicallyCorrectLights = true;
@@ -70,22 +72,31 @@ export class ProcmapComponent implements OnInit {
     );
     this.camera.position.set(-10,30,30);
 
-    const ambientLight = new THREE.AmbientLight(0xFFFFFF);
-    this.scene.add(ambientLight);
-    ambientLight.intensity = 4;
+    // const ambientLight = new THREE.AmbientLight(0xFFFFFF);
+    // this.scene.add(ambientLight);
+    // ambientLight.intensity = 4;
 
-    const manager = new THREE.LoadingManager();
-    const textureLoader = new THREE.TextureLoader(manager);
-    
-    this.hexTexture = textureLoader.load('/assets/envmap.hdr');
+    const light = new THREE.PointLight( new THREE.Color("#FFCBBE").convertSRGBToLinear().convertSRGBToLinear(), 80, 200 );
+    light.position.set(10, 20, 10);
 
-    console.log(this.hexTexture);
-    
-
+    light.castShadow = true; 
+    light.shadow.mapSize.width = 512; 
+    light.shadow.mapSize.height = 512; 
+    light.shadow.camera.near = 0.5; 
+    light.shadow.camera.far = 500; 
+    this.scene.add( light );
+  
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0,0,0);
     this.controls.dampingFactor = 0.05;
     this.controls.enableDamping = true;
+
+    let pmrem = new THREE.PMREMGenerator(this.renderer);
+    pmrem.compileEquirectangularShader();
+
+    let envmapTexture = await new RGBELoader().loadAsync("assets/envmap.hdr");
+    let rt = pmrem.fromEquirectangular(envmapTexture);
+    this.envmap = rt.texture;
 
     let textures = {
       dirt: await new THREE.TextureLoader().loadAsync("/assets/images/dirt.png"),
@@ -121,20 +132,81 @@ export class ProcmapComponent implements OnInit {
         this.makeHex(noise, position);
       }
     }
-    let hexagonMesh = new THREE.Mesh(
-      this.hexagonGeometries,
-      new THREE.MeshStandardMaterial({
-        color: 0xc3cfa5,
-        flatShading: true
+    // let hexagonMesh = new THREE.Mesh(
+    //   this.hexagonGeometries,
+    //   new THREE.MeshStandardMaterial({
+    //     color: 0xc3cfa5,
+    //     flatShading: true
+    //   })
+    // );
+
+    // var geometry = new THREE.EdgesGeometry( hexagonMesh.geometry ); // or WireframeGeometry
+    // var material = new THREE.LineBasicMaterial( { color: 0x000000, linewidth: 2 } );
+    // var edges = new THREE.LineSegments( geometry, material );
+    // hexagonMesh.add(edges)
+
+    // this.scene.add(hexagonMesh);
+
+    let stoneMesh = this.hexMesh(this.stoneGeo, textures.stone);
+    let grassMesh = this.hexMesh(this.grassGeo, textures.grass);
+    let dirt2Mesh = this.hexMesh(this.dirt2Geo, textures.dirt2);
+    let dirtMesh  = this.hexMesh(this.dirtGeo, textures.dirt);
+    let sandMesh  = this.hexMesh(this.sandGeo, textures.sand);
+    this.scene.add(stoneMesh, dirtMesh, dirt2Mesh, sandMesh, grassMesh);
+
+    let seaTexture = textures.water;
+    seaTexture.repeat = new THREE.Vector2(1, 1);
+    seaTexture.wrapS = THREE.RepeatWrapping;
+    seaTexture.wrapT = THREE.RepeatWrapping;
+
+    let seaMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(17, 17, MAX_HEIGHT * 0.2, 50),
+      new THREE.MeshPhysicalMaterial({
+        envMap: this.envmap,
+        color: new THREE.Color("#55aaff").convertSRGBToLinear().multiplyScalar(3),
+        ior: 1.4,
+        transmission: 1,
+        transparent: true,
+        envMapIntensity: 0.2, 
+        roughness: 1,
+        metalness: 0.025,
+        roughnessMap: seaTexture,
+        metalnessMap: seaTexture,
       })
     );
+    seaMesh.receiveShadow = true;
+    seaMesh.rotation.y = -Math.PI * 0.333 * 0.5;
+    seaMesh.position.set(0, MAX_HEIGHT * 0.1, 0);
+    this.scene.add(seaMesh);
 
-    var geometry = new THREE.EdgesGeometry( hexagonMesh.geometry ); // or WireframeGeometry
-    var material = new THREE.LineBasicMaterial( { color: 0x000000, linewidth: 2 } );
-    var edges = new THREE.LineSegments( geometry, material );
-    hexagonMesh.add(edges)
+    let mapContainer = new THREE.Mesh(
+      new THREE.CylinderGeometry(17.1, 17.1, MAX_HEIGHT * 0.25, 50, 1, true),
+      new THREE.MeshPhysicalMaterial({
+        envMap: this.envmap,
+        map: textures.dirt,
+        envMapIntensity: 0.2, 
+        side: THREE.DoubleSide,
+      })
+    );
+    mapContainer.receiveShadow = true;
+    mapContainer.rotation.y = -Math.PI * 0.333 * 0.5;
+    mapContainer.position.set(0, MAX_HEIGHT * 0.125, 0);
+    this.scene.add(mapContainer);
 
-    this.scene.add(hexagonMesh);
+    let mapFloor = new THREE.Mesh(
+      new THREE.CylinderGeometry(18.5, 18.5, MAX_HEIGHT * 0.1, 50),
+      new THREE.MeshPhysicalMaterial({
+        envMap: this.envmap,
+        map: textures.dirt2,
+        envMapIntensity: 0.1, 
+        side: THREE.DoubleSide,
+      })
+    );
+    mapFloor.receiveShadow = true;
+    mapFloor.position.set(0, -MAX_HEIGHT * 0.05, 0);
+    this.scene.add(mapFloor);
+
+    this.clouds();
 
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
@@ -156,8 +228,100 @@ export class ProcmapComponent implements OnInit {
     this.hexagonGeometries = BufferGeometryUtils.mergeBufferGeometries([this.hexagonGeometries, geo]);
     if (height > STONE_HEIGHT) {
       this.stoneGeo = BufferGeometryUtils.mergeBufferGeometries([geo, this.stoneGeo]);
+      if(Math.random() > 0.8) {
+        this.stoneGeo = BufferGeometryUtils.mergeBufferGeometries([this.stoneGeo, this.stone(height, position)]);
+      }
     } else if (height > DIRT_HEIGHT) {
       this.dirtGeo = BufferGeometryUtils.mergeBufferGeometries([geo, this.dirtGeo]);
+      if(Math.random() > 0.8) {
+        this.grassGeo = BufferGeometryUtils.mergeBufferGeometries([this.grassGeo, this.tree(height, position)]);
+      }
+    } else if (height > GRASS_HEIGHT) {
+      this.grassGeo = BufferGeometryUtils.mergeBufferGeometries([geo, this.grassGeo]);
+    } else if (height > SAND_HEIGHT) {
+      this.sandGeo = BufferGeometryUtils.mergeBufferGeometries([geo, this.sandGeo]);
+      if(Math.random() > 0.8) {
+        this.stoneGeo = BufferGeometryUtils.mergeBufferGeometries([this.stoneGeo, this.stone(height, position)]);
+      }
+    } else if (height > DIRT2_HEIGHT) {
+      this.dirt2Geo = BufferGeometryUtils.mergeBufferGeometries([geo, this.dirt2Geo]);
     }
+  }
+
+  hexMesh(geo, map) {
+    let mat = new THREE.MeshPhysicalMaterial({
+      envMap: this.envmap,
+      envMapIntensity: 0.135,
+      flatShading: true,
+      map
+    });
+
+    let mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    return mesh;
+  }
+
+  stone(height, position) {
+    const px = Math.random() * 0.4;
+    const pz = Math.random() * 0.4;
+  
+    const geo = new THREE.SphereGeometry(Math.random() * 0.3 + 0.1, 7, 7);
+    geo.translate(position.x + px, height, position.y + pz);
+  
+    return geo;
+  }
+
+  tree(height, position) {
+    const treeHeight = Math.random() * 1 + 1.25;
+  
+    const geo = new THREE.CylinderGeometry(0, 1.5, treeHeight, 3);
+    geo.translate(position.x, height + treeHeight * 0 + 1, position.y);
+    
+    const geo2 = new THREE.CylinderGeometry(0, 1.15, treeHeight, 3);
+    geo2.translate(position.x, height + treeHeight * 0.6 + 1, position.y);
+    
+    const geo3 = new THREE.CylinderGeometry(0, 0.8, treeHeight, 3);
+    geo3.translate(position.x, height + treeHeight * 1.25 + 1, position.y);
+  
+    return BufferGeometryUtils.mergeBufferGeometries([geo, geo2, geo3]);
+  }
+
+  clouds() {
+    let geo : any = new THREE.SphereGeometry(0, 0, 0); 
+    let count = Math.floor(Math.pow(Math.random(), 0.45) * 4);
+  
+    for(let i = 0; i < count; i++) {
+      const puff1 = new THREE.SphereGeometry(1.2, 7, 7);
+      const puff2 = new THREE.SphereGeometry(1.5, 7, 7);
+      const puff3 = new THREE.SphereGeometry(0.9, 7, 7);
+     
+      puff1.translate(-1.85, Math.random() * 0.3, 0);
+      puff2.translate(0,     Math.random() * 0.3, 0);
+      puff3.translate(1.85,  Math.random() * 0.3, 0);
+  
+      const cloudGeo = BufferGeometryUtils.mergeBufferGeometries([puff1, puff2, puff3]);
+      cloudGeo.translate( 
+        Math.random() * 20 - 10, 
+        Math.random() * 7 + 7, 
+        Math.random() * 20 - 10
+      );
+      cloudGeo.rotateY(Math.random() * Math.PI * 2);
+  
+      geo = BufferGeometryUtils.mergeBufferGeometries([geo, cloudGeo]);
+    }
+    const mesh = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({
+        envMap: this.envmap, 
+        envMapIntensity: 0.75, 
+        flatShading: true,
+        // transparent: true,
+        // opacity: 0.85,
+      })
+    );
+  
+    this.scene.add(mesh);
   }
 }

@@ -25,6 +25,7 @@
     "three": "^0.146.0",
     "three-buffer-geometry-utils": "^1.0.0",
     "three-noise": "^1.1.2",
+    "three-stdlib": "^2.19.0",
     "tslib": "^2.1.0",
     "zone.js": "~0.11.4"
   },
