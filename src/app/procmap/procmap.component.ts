@@ -6,12 +6,12 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 import { createNoise2D } from 'simplex-noise';
 import { RGBELoader } from 'three-stdlib/loaders/RGBELoader';
 
-const MAX_HEIGHT = 10;
-const STONE_HEIGHT = MAX_HEIGHT * 0.8;
-const DIRT_HEIGHT = MAX_HEIGHT * 0.7;
-const GRASS_HEIGHT = MAX_HEIGHT * 0.5;
-const SAND_HEIGHT = MAX_HEIGHT * 0.3;
-const DIRT2_HEIGHT = MAX_HEIGHT * 0;
+let MAX_HEIGHT = 10;
+let STONE_HEIGHT = MAX_HEIGHT * 0.8;
+let DIRT_HEIGHT = MAX_HEIGHT * 0.7;
+let GRASS_HEIGHT = MAX_HEIGHT * 0.5;
+let SAND_HEIGHT = MAX_HEIGHT * 0.3;
+let DIRT2_HEIGHT = MAX_HEIGHT * 0;
 
 @Component({
   selector: 'app-procmap',
@@ -36,6 +36,8 @@ export class ProcmapComponent implements OnInit {
 
   envmap;
 
+  size = 0.5;
+
   private gui: dat.GUI;
 
   widthRatio: number;
@@ -47,6 +49,12 @@ export class ProcmapComponent implements OnInit {
   constructor() { }
 
   ngOnInit(): void {
+    MAX_HEIGHT = 10 * this.size;
+    STONE_HEIGHT = MAX_HEIGHT * 0.8;
+    DIRT_HEIGHT = MAX_HEIGHT * 0.7;
+    GRASS_HEIGHT = MAX_HEIGHT * 0.5;
+    SAND_HEIGHT = MAX_HEIGHT * 0.3;
+    DIRT2_HEIGHT = MAX_HEIGHT * 0;
   }
 
   async ngAfterViewInit() {
@@ -107,10 +115,6 @@ export class ProcmapComponent implements OnInit {
       stone: await new THREE.TextureLoader().loadAsync("assets/images/stone.png")
     }
 
-    console.log(textures);
-    
-
-
     this.hexagonGeometries = new THREE.BoxGeometry(0,0,0);
     this.stoneGeo = new THREE.BoxGeometry(0,0,0);
     this.dirtGeo = new THREE.BoxGeometry(0,0,0);
@@ -119,10 +123,10 @@ export class ProcmapComponent implements OnInit {
     this.grassGeo = new THREE.BoxGeometry(0,0,0);
     const noise2D = createNoise2D();
 
-    for (let i = -10; i <= 10; i++) {
-      for (let j = -10; j <= 10; j++) {
+    for (let i = -10 / this.size; i <= 10 / this.size; i++) {
+      for (let j = -10 / this.size; j <= 10 / this.size; j++) {
         let position = this.tilePosition(i, j);
-        if (position.length() > 16) {
+        if (position.length() > 15) {
           continue;
         }
 
@@ -214,11 +218,11 @@ export class ProcmapComponent implements OnInit {
   }
 
   tilePosition(tileX, tileY) {
-    return new THREE.Vector2((tileX + (tileY % 2) * 0.5) * 1.77, tileY * 1.535);
+    return new THREE.Vector2((tileX + (tileY % 2) * 0.5) * 1.77 * this.size, tileY * 1.535 * this.size);
   }
 
   hexGeometry(height, position) {
-    let geo = new THREE.CylinderGeometry(1,1, height, 6, 1, false);
+    let geo = new THREE.CylinderGeometry(1 * this.size, 1 * this.size, height, 6, 1, false);
     geo.translate(position.x, height * 0.5, position.y);
     return geo;
   }
@@ -274,7 +278,7 @@ export class ProcmapComponent implements OnInit {
   }
 
   tree(height, position) {
-    const treeHeight = Math.random() * 1 + 1.25;
+    const treeHeight = Math.random() * this.size + 1.25;
   
     const geo = new THREE.CylinderGeometry(0, 1.5, treeHeight, 3);
     geo.translate(position.x, height + treeHeight * 0 + 1, position.y);
