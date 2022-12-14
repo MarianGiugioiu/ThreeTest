@@ -18,20 +18,43 @@ bool iterateMandelbrot(vec2 coord){
 	return false;
 }
 
+vec3 spherical(vec3 coord) {
+    float r = sqrt(pow(coord.x, 2.0) + pow(coord.y, 2.0) + pow(coord.z, 2.0));
+    float theta = atan( sqrt(pow(coord.x, 2.0) + pow(coord.y, 2.0)), coord.z);
+    float phi = atan(coord.y, coord.x);
+    return vec3(r, theta, phi);
+}
+
+vec3 nthPowerCube(float n, vec3 coord, vec3 c) {
+    float newx = pow(c.x, n) * sin(c.y*n) * cos(c.z*n);
+    float newy = pow(c.x, n) * sin(c.y*n) * sin(c.z*n);
+    float newz = pow(c.x, n) * cos(c.y*n);
+    return vec3(newx + coord.x, newy + coord.y, newz + coord.z);
+}
+
+bool iterateMandelbulb(vec3 coord) {
+    vec3 zeta = vec3(0);
+    float n = 8.0;
+    int maxIterations = 20;
+    for(int i=0;i<maxIterations;i++){
+        vec3 c = spherical(vec3(zeta.x, zeta.y, zeta.z));
+
+        if (c.x > 2.0) {
+            return true;
+        }
+
+		zeta = nthPowerCube(n, coord, c);
+	}
+    return false;
+}
+
 void main() {
-    //gl_FragColor = vec4(abs(sin(pos.x + u_time)), abs(sin(pos.y + u_time)), abs(sin(pos.z + u_time)), 1.0);
-    // if (pos.x >= 0.0) {
-    //   // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    //   gl_FragColor = vec4(abs(sin(u_time)), 0.0, 0.0, 1.0);
-    // } else {
-    //   // gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    //   gl_FragColor = vec4(0.0, abs(cos(u_time)), 0.0, 1.0);
-    // }
     float newX = pos.x / 5.0;
     float newY = pos.y / 5.0;
+    float newZ = pos.z / 5.0;
 
-    bool point = iterateMandelbrot(vec2(newX, newY));
-    //gl_FragColor = vec4(point, point, point, 1.0);
+    //bool point = iterateMandelbrot(vec2(newX, newY));
+    bool point = iterateMandelbulb(vec3(newX, newY, newZ));
     if (point) {
         discard;
         //gl_FragColor = vec4(0.0, 0.0, 0.0, 1);
