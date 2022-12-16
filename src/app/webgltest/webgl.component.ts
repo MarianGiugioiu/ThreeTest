@@ -29,6 +29,10 @@ export class WebglComponent implements OnInit {
 
     this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    this.gl.enable(this.gl.DEPTH_TEST);
+    this.gl.enable(this.gl.CULL_FACE);
+    this.gl.cullFace(this.gl.BACK);
+    this.gl.frontFace(this.gl.CCW);
 
     let vertexShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/vertexShader.vert");
     let fragmentShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/fragmentShader.frag");
@@ -134,9 +138,13 @@ export class WebglComponent implements OnInit {
       22, 20, 23
     ];
 
-    let TriangleVertexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, TriangleVertexBufferObject);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(triangleVertices), this.gl.STATIC_DRAW);
+    let BoxVertexBufferObject = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, BoxVertexBufferObject);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(boxVertices), this.gl.STATIC_DRAW);
+
+    let boxIndexBufferObject = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, boxIndexBufferObject);
+	  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(boxIndices), this.gl.STATIC_DRAW);
 
     let positionAttributeLocation = this.gl.getAttribLocation(program, 'vertPosition');
     let colorAttributeLocation = this.gl.getAttribLocation(program, 'vertColor');
@@ -172,24 +180,33 @@ export class WebglComponent implements OnInit {
     let projMatrix = new Float32Array(16);
 
     mat4.identity(worldMatrix);
-    mat4.lookAt(viewMatrix, [0, 0, -2], [0, 0, 0], [0, 1, 0]);
+    mat4.lookAt(viewMatrix, [0, 0, -8], [0, 0, 0], [0, 1, 0]);
     mat4.perspective(projMatrix, glMatrix.toRadian(45), this.canvas.width / this.canvas.height, 0.1, 1000.0);
 
     this.gl.uniformMatrix4fv(matWorldUniformLocation, false, worldMatrix);
     this.gl.uniformMatrix4fv(matviewUniformLocation, false, viewMatrix);
     this.gl.uniformMatrix4fv(matProjUniformLocation, false, projMatrix);
+
+    let xRotationMatrix = new Float32Array(16);
+    let yRotationMatrix = new Float32Array(16);
+    let zRotationMatrix = new Float32Array(16);
+    let auxMatrix = new Float32Array(16);
       
     let angle = 0;
     let identityMatrix = new Float32Array(16);
     mat4.identity(identityMatrix);
     const loop = () => {
       angle = performance.now() / 1000 / 6 * 2 * Math.PI;
-      mat4.rotate(worldMatrix, identityMatrix, angle, [0, 1, 0]);
+      mat4.rotate(zRotationMatrix, identityMatrix, angle, [0, 0, 1]);
+      mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]);
+      mat4.rotate(xRotationMatrix, identityMatrix, angle, [1, 0, 0]);
+      mat4.mul(auxMatrix, zRotationMatrix, xRotationMatrix);
+      mat4.mul(worldMatrix,yRotationMatrix, auxMatrix);
       this.gl.uniformMatrix4fv(matWorldUniformLocation, false, worldMatrix);
 
       this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-      this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+      this.gl.drawElements(this.gl.TRIANGLES, boxIndices.length, this.gl.UNSIGNED_SHORT, 0);
 
       requestAnimationFrame(loop);
     };
