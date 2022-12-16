@@ -73,42 +73,42 @@ export class WebglComponent implements OnInit {
     ];
 
     var boxVertices = 
-    [ // X, Y, Z           R, G, B
+    [ // X, Y, Z           U, V
       // Top
-      -1.0, 1.0, -1.0,   0.5, 0.5, 0.5,
-      -1.0, 1.0, 1.0,    0.5, 0.5, 0.5,
-      1.0, 1.0, 1.0,     0.5, 0.5, 0.5,
-      1.0, 1.0, -1.0,    0.5, 0.5, 0.5,
+      -1.0, 1.0, -1.0,   0, 0,
+      -1.0, 1.0, 1.0,    0, 1,
+      1.0, 1.0, 1.0,     1, 1,
+      1.0, 1.0, -1.0,    1, 0,
 
       // Left
-      -1.0, 1.0, 1.0,    0.75, 0.25, 0.5,
-      -1.0, -1.0, 1.0,   0.75, 0.25, 0.5,
-      -1.0, -1.0, -1.0,  0.75, 0.25, 0.5,
-      -1.0, 1.0, -1.0,   0.75, 0.25, 0.5,
+      -1.0, 1.0, 1.0,    0, 0,
+      -1.0, -1.0, 1.0,   1, 0,
+      -1.0, -1.0, -1.0,  1, 1,
+      -1.0, 1.0, -1.0,   0, 1,
 
       // Right
-      1.0, 1.0, 1.0,    0.25, 0.25, 0.75,
-      1.0, -1.0, 1.0,   0.25, 0.25, 0.75,
-      1.0, -1.0, -1.0,  0.25, 0.25, 0.75,
-      1.0, 1.0, -1.0,   0.25, 0.25, 0.75,
+      1.0, 1.0, 1.0,    1, 1,
+      1.0, -1.0, 1.0,   0, 1,
+      1.0, -1.0, -1.0,  0, 0,
+      1.0, 1.0, -1.0,   1, 0,
 
       // Front
-      1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
-      1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
-      -1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
-      -1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
+      1.0, 1.0, 1.0,    1, 1,
+      1.0, -1.0, 1.0,    1, 0,
+      -1.0, -1.0, 1.0,    0, 0,
+      -1.0, 1.0, 1.0,    0, 1,
 
       // Back
-      1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
-      1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
-      -1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
-      -1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
+      1.0, 1.0, -1.0,    0, 0,
+      1.0, -1.0, -1.0,    0, 1,
+      -1.0, -1.0, -1.0,    1, 1,
+      -1.0, 1.0, -1.0,    1, 0,
 
       // Bottom
-      -1.0, -1.0, -1.0,   0.5, 0.5, 1.0,
-      -1.0, -1.0, 1.0,    0.5, 0.5, 1.0,
-      1.0, -1.0, 1.0,     0.5, 0.5, 1.0,
-      1.0, -1.0, -1.0,    0.5, 0.5, 1.0,
+      -1.0, -1.0, -1.0,   1, 1,
+      -1.0, -1.0, 1.0,    1, 0,
+      1.0, -1.0, 1.0,     0, 0,
+      1.0, -1.0, -1.0,    0, 1,
     ];
 
     var boxIndices =
@@ -146,28 +146,43 @@ export class WebglComponent implements OnInit {
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, boxIndexBufferObject);
 	  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(boxIndices), this.gl.STATIC_DRAW);
 
-    let positionAttributeLocation = this.gl.getAttribLocation(program, 'vertPosition');
-    let colorAttributeLocation = this.gl.getAttribLocation(program, 'vertColor');
+    var positionAttribLocation = this.gl.getAttribLocation(program, 'vertPosition');
+	  var texCoordAttribLocation = this.gl.getAttribLocation(program, 'vertTexCoord');
     this.gl.vertexAttribPointer(
-      positionAttributeLocation,
-      3,
-      this.gl.FLOAT,
+      positionAttribLocation, // Attribute location
+      3, // Number of elements per attribute
+      this.gl.FLOAT, // Type of elements
       false,
-      6 * Float32Array.BYTES_PER_ELEMENT,
-      0
+      5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+      0 // Offset from the beginning of a single vertex to this attribute
+    );
+    this.gl.vertexAttribPointer(
+      texCoordAttribLocation, // Attribute location
+      2, // Number of elements per attribute
+      this.gl.FLOAT, // Type of elements
+      false,
+      5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+      3 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
     );
 
-    this.gl.vertexAttribPointer(
-      colorAttributeLocation,
-      3,
-      this.gl.FLOAT,
-      false,
-      6 * Float32Array.BYTES_PER_ELEMENT,
-      3 * Float32Array.BYTES_PER_ELEMENT
+    this.gl.enableVertexAttribArray(positionAttribLocation);
+    this.gl.enableVertexAttribArray(texCoordAttribLocation);
+
+    let boxTexture = this.gl.createTexture();
+    this.gl.bindTexture(this.gl.TEXTURE_2D, boxTexture);
+
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA,
+      this.gl.UNSIGNED_BYTE,
+      document.getElementById('crate-image') as any
     );
 
-    this.gl.enableVertexAttribArray(positionAttributeLocation);
-    this.gl.enableVertexAttribArray(colorAttributeLocation);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
     this.gl.useProgram(program);
 
@@ -206,6 +221,10 @@ export class WebglComponent implements OnInit {
 
       this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+
+      this.gl.bindTexture(this.gl.TEXTURE_2D, boxTexture);
+		  this.gl.activeTexture(this.gl.TEXTURE0);
+
       this.gl.drawElements(this.gl.TRIANGLES, boxIndices.length, this.gl.UNSIGNED_SHORT, 0);
 
       requestAnimationFrame(loop);
