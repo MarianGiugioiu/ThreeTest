@@ -8,6 +8,7 @@ import { MandelbulbComponent } from './mandelbulb/mandelbulb.component';
 import { PhysicsComponent } from './physics/physics.component';
 import { ProcmapComponent } from './procmap/procmap.component';
 import { ShadersComponent } from './shaders/shaders.component';
+import { WebglComponent } from './webgltest/webgl.component';
 
 @NgModule({
   declarations: [
@@ -16,7 +17,8 @@ import { ShadersComponent } from './shaders/shaders.component';
     ProcmapComponent,
     PhysicsComponent,
     MandelbulbComponent,
-    ShadersComponent
+    ShadersComponent,
+    WebglComponent
   ],
   imports: [
     BrowserModule,

@@ -83,7 +83,7 @@ export class ShadersComponent implements OnInit {
     let vertexShaderCode = await fileLoader.loadAsync("/assets/shaders/a_vertex.glsl");
     let vertexFragmentCode = await fileLoader.loadAsync("/assets/shaders/a_fragment.glsl");
 
-    const boxGeometry = new THREE.BoxGeometry(20,20,20,40,40,40);
+    const boxGeometry = new THREE.PlaneGeometry(20,20,40,40);
     const boxMaterial = new THREE.ShaderMaterial({
       //wireframe: true,
       uniforms: uniformData,

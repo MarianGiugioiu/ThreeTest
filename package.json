@@ -22,6 +22,7 @@
     "cannon-es": "^0.20.0",
     "cannon-es-debugger": "^1.0.0",
     "dat.gui": "^0.7.9",
+    "gl-matrix": "^3.4.3",
     "rxjs": "~6.6.0",
     "simplex-noise": "^4.0.1",
     "three": "^0.146.0",
