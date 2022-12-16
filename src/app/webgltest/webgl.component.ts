@@ -36,6 +36,9 @@ export class WebglComponent implements OnInit {
 
     let vertexShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/vertexShader.vert");
     let fragmentShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/fragmentShader.frag");
+    let susanModelJSON = await fileLoader.loadAsync("/assets/json/Susan.json");
+    let susanModel = JSON.parse(susanModelJSON as string);
+    
     
     let vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
     let fragmentShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
@@ -66,111 +69,49 @@ export class WebglComponent implements OnInit {
       return;
     }
 
-    let triangleVertices = [
-      0.0, 0.5, 0.0, 1.0, 1.0, 0.0,
-      -0.5, -0.5, 0.0, 0.7, 0.0, 1.0,
-      0.5, -0.5, 0.0, 0.1, 1.0, 0.6
-    ];
+    let susanVertices = susanModel.meshes[0].vertices;
+    let susanIndices = [].concat.apply([], susanModel.meshes[0].faces);
+    let susanTexCoords = susanModel.meshes[0].texturecoords[0];
 
-    var boxVertices = 
-    [ // X, Y, Z           U, V
-      // Top
-      -1.0, 1.0, -1.0,   0, 0,
-      -1.0, 1.0, 1.0,    0, 1,
-      1.0, 1.0, 1.0,     1, 1,
-      1.0, 1.0, -1.0,    1, 0,
+    let SusanPosVertexBufferObject = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanPosVertexBufferObject);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(susanVertices), this.gl.STATIC_DRAW);
 
-      // Left
-      -1.0, 1.0, 1.0,    0, 0,
-      -1.0, -1.0, 1.0,   1, 0,
-      -1.0, -1.0, -1.0,  1, 1,
-      -1.0, 1.0, -1.0,   0, 1,
+    let SusanTexCoordVertexBufferObject = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanTexCoordVertexBufferObject);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(susanTexCoords), this.gl.STATIC_DRAW);
 
-      // Right
-      1.0, 1.0, 1.0,    1, 1,
-      1.0, -1.0, 1.0,   0, 1,
-      1.0, -1.0, -1.0,  0, 0,
-      1.0, 1.0, -1.0,   1, 0,
+    let susanIndexBufferObject = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, susanIndexBufferObject);
+	  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(susanIndices), this.gl.STATIC_DRAW);
 
-      // Front
-      1.0, 1.0, 1.0,    1, 1,
-      1.0, -1.0, 1.0,    1, 0,
-      -1.0, -1.0, 1.0,    0, 0,
-      -1.0, 1.0, 1.0,    0, 1,
-
-      // Back
-      1.0, 1.0, -1.0,    0, 0,
-      1.0, -1.0, -1.0,    0, 1,
-      -1.0, -1.0, -1.0,    1, 1,
-      -1.0, 1.0, -1.0,    1, 0,
-
-      // Bottom
-      -1.0, -1.0, -1.0,   1, 1,
-      -1.0, -1.0, 1.0,    1, 0,
-      1.0, -1.0, 1.0,     0, 0,
-      1.0, -1.0, -1.0,    0, 1,
-    ];
-
-    var boxIndices =
-    [
-      // Top
-      0, 1, 2,
-      0, 2, 3,
-
-      // Left
-      5, 4, 6,
-      6, 4, 7,
-
-      // Right
-      8, 9, 10,
-      8, 10, 11,
-
-      // Front
-      13, 12, 14,
-      15, 14, 12,
-
-      // Back
-      16, 17, 18,
-      16, 18, 19,
-
-      // Bottom
-      21, 20, 22,
-      22, 20, 23
-    ];
-
-    let BoxVertexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, BoxVertexBufferObject);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(boxVertices), this.gl.STATIC_DRAW);
-
-    let boxIndexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, boxIndexBufferObject);
-	  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(boxIndices), this.gl.STATIC_DRAW);
-
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanPosVertexBufferObject);
     var positionAttribLocation = this.gl.getAttribLocation(program, 'vertPosition');
-	  var texCoordAttribLocation = this.gl.getAttribLocation(program, 'vertTexCoord');
     this.gl.vertexAttribPointer(
       positionAttribLocation, // Attribute location
       3, // Number of elements per attribute
       this.gl.FLOAT, // Type of elements
       false,
-      5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+      3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
       0 // Offset from the beginning of a single vertex to this attribute
     );
+    this.gl.enableVertexAttribArray(positionAttribLocation);
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanTexCoordVertexBufferObject);
+    var texCoordAttribLocation = this.gl.getAttribLocation(program, 'vertTexCoord');
     this.gl.vertexAttribPointer(
       texCoordAttribLocation, // Attribute location
       2, // Number of elements per attribute
       this.gl.FLOAT, // Type of elements
       false,
-      5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-      3 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
+      2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+      0// Offset from the beginning of a single vertex to this attribute
     );
-
-    this.gl.enableVertexAttribArray(positionAttribLocation);
     this.gl.enableVertexAttribArray(texCoordAttribLocation);
 
-    let boxTexture = this.gl.createTexture();
-    this.gl.bindTexture(this.gl.TEXTURE_2D, boxTexture);
-
+    let susanTexture = this.gl.createTexture();
+    this.gl.bindTexture(this.gl.TEXTURE_2D, susanTexture);
+    this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
@@ -222,10 +163,10 @@ export class WebglComponent implements OnInit {
       this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-      this.gl.bindTexture(this.gl.TEXTURE_2D, boxTexture);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, susanTexture);
 		  this.gl.activeTexture(this.gl.TEXTURE0);
 
-      this.gl.drawElements(this.gl.TRIANGLES, boxIndices.length, this.gl.UNSIGNED_SHORT, 0);
+      this.gl.drawElements(this.gl.TRIANGLES, susanIndices.length, this.gl.UNSIGNED_SHORT, 0);
 
       requestAnimationFrame(loop);
     };
