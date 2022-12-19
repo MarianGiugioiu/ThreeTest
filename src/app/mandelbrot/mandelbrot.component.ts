@@ -3,11 +3,11 @@ import { glMatrix, mat4 } from 'gl-matrix';
 import * as THREE from 'three';
 
 @Component({
-  selector: 'app-webgl',
-  templateUrl: './webgl.component.html',
-  styleUrls: ['./webgl.component.scss']
+  selector: 'app-mandelbrot',
+  templateUrl: './mandelbrot.component.html',
+  styleUrls: ['./mandelbrot.component.scss']
 })
-export class WebglComponent implements OnInit {
+export class MandelbrotComponent implements OnInit {
   @ViewChild('canvas') private canvasRef: ElementRef;
   private get canvas(): HTMLCanvasElement {
     return this.canvasRef.nativeElement;
@@ -34,8 +34,8 @@ export class WebglComponent implements OnInit {
     this.gl.cullFace(this.gl.BACK);
     this.gl.frontFace(this.gl.CCW);
 
-    let vertexShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/vertexShader.vert");
-    let fragmentShaderText = await fileLoader.loadAsync("/assets/shaders/webgltest/fragmentShader.frag");
+    let vertexShaderText = await fileLoader.loadAsync("/assets/shaders/mandelbrot/vertexShader.vert");
+    let fragmentShaderText = await fileLoader.loadAsync("/assets/shaders/mandelbrot/fragmentShader.frag");
     let susanModelJSON = await fileLoader.loadAsync("/assets/json/Susan.json");
     let susanModel = JSON.parse(susanModelJSON as string);
     
