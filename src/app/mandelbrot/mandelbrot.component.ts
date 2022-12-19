@@ -20,25 +20,18 @@ export class MandelbrotComponent implements OnInit {
   }
 
   async ngAfterViewInit() {
-    this.canvas.width = 1280 * 2;
-    this.canvas.height = 739 * 2;
 
     this.gl = this.canvas.getContext('webgl');
 
     const fileLoader = new THREE.FileLoader();
 
-    this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-    this.gl.enable(this.gl.DEPTH_TEST);
-    this.gl.enable(this.gl.CULL_FACE);
-    this.gl.cullFace(this.gl.BACK);
-    this.gl.frontFace(this.gl.CCW);
+    // this.gl.enable(this.gl.DEPTH_TEST);
+    // this.gl.enable(this.gl.CULL_FACE);
+    // this.gl.cullFace(this.gl.BACK);
+    // this.gl.frontFace(this.gl.CCW);
 
     let vertexShaderText = await fileLoader.loadAsync("/assets/shaders/mandelbrot/vertexShader.vert");
     let fragmentShaderText = await fileLoader.loadAsync("/assets/shaders/mandelbrot/fragmentShader.frag");
-    let susanModelJSON = await fileLoader.loadAsync("/assets/json/Susan.json");
-    let susanModel = JSON.parse(susanModelJSON as string);
-    
     
     let vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
     let fragmentShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
@@ -69,141 +62,166 @@ export class MandelbrotComponent implements OnInit {
       return;
     }
 
-    let susanVertices = susanModel.meshes[0].vertices;
-    let susanIndices = [].concat.apply([], susanModel.meshes[0].faces);
-    let susanTexCoords = susanModel.meshes[0].texturecoords[0];
-    let susanNormals = susanModel.meshes[0].normals;
-
-    let SusanPosVertexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanPosVertexBufferObject);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(susanVertices), this.gl.STATIC_DRAW);
-
-    let SusanTexCoordVertexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanTexCoordVertexBufferObject);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(susanTexCoords), this.gl.STATIC_DRAW);
-
-    let susanIndexBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, susanIndexBufferObject);
-	  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(susanIndices), this.gl.STATIC_DRAW);
-
-    let susanNormalBufferObject = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, susanNormalBufferObject);
-	  this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(susanNormals), this.gl.STATIC_DRAW);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanPosVertexBufferObject);
-    var positionAttribLocation = this.gl.getAttribLocation(program, 'vertPosition');
-    this.gl.vertexAttribPointer(
-      positionAttribLocation, // Attribute location
-      3, // Number of elements per attribute
-      this.gl.FLOAT, // Type of elements
-      false,
-      3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-      0 // Offset from the beginning of a single vertex to this attribute
-    );
-    this.gl.enableVertexAttribArray(positionAttribLocation);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, SusanTexCoordVertexBufferObject);
-    var texCoordAttribLocation = this.gl.getAttribLocation(program, 'vertTexCoord');
-    this.gl.vertexAttribPointer(
-      texCoordAttribLocation, // Attribute location
-      2, // Number of elements per attribute
-      this.gl.FLOAT, // Type of elements
-      false,
-      2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-      0// Offset from the beginning of a single vertex to this attribute
-    );
-    this.gl.enableVertexAttribArray(texCoordAttribLocation);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, susanNormalBufferObject);
-    var normalAttribLocation = this.gl.getAttribLocation(program, 'vertNormal');
-    this.gl.vertexAttribPointer(
-      normalAttribLocation, // Attribute location
-      3, // Number of elements per attribute
-      this.gl.FLOAT, // Type of elements
-      true,
-      3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-      0// Offset from the beginning of a single vertex to this attribute
-    );
-    this.gl.enableVertexAttribArray(normalAttribLocation);
-
-    let susanTexture = this.gl.createTexture();
-    this.gl.bindTexture(this.gl.TEXTURE_2D, susanTexture);
-    this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA,
-      this.gl.UNSIGNED_BYTE,
-      document.getElementById('crate-image') as any
-    );
-
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
-
     this.gl.useProgram(program);
 
-    let matWorldUniformLocation = this.gl.getUniformLocation(program, 'mWorld');
-    let matviewUniformLocation = this.gl.getUniformLocation(program, 'mView');
-    let matProjUniformLocation = this.gl.getUniformLocation(program, 'mProj');
+    var uniforms = {
+      viewportDimensions: this.gl.getUniformLocation(program, 'viewportDimensions'),
+      minI: this.gl.getUniformLocation(program, 'minI'),
+      maxI: this.gl.getUniformLocation(program, 'maxI'),
+      minR: this.gl.getUniformLocation(program, 'minR'),
+      maxR: this.gl.getUniformLocation(program, 'maxR')
+    }
 
-    let worldMatrix = new Float32Array(16);
-    let viewMatrix = new Float32Array(16);
-    let projMatrix = new Float32Array(16);
+    var vpDimensions = [this.canvas.clientWidth, this.canvas.clientHeight];
+    // var minI = -2.0;
+    // var maxI = 2.0;
+    // var minR = -2.0;
+    // var maxR = 2.0;
+    var minR = -0.2070035701573997;
+    var maxR = -0.2058979527517162;
+    var minI = 0.6437000938543829;
+    var maxI = 0.6447288185269139;
 
-    mat4.identity(worldMatrix);
-    mat4.lookAt(viewMatrix, [0, 0, -8], [0, 0, 0], [0, 1, 0]);
-    mat4.perspective(projMatrix, glMatrix.toRadian(45), this.canvas.width / this.canvas.height, 0.1, 1000.0);
-
-    this.gl.uniformMatrix4fv(matWorldUniformLocation, false, worldMatrix);
-    this.gl.uniformMatrix4fv(matviewUniformLocation, false, viewMatrix);
-    this.gl.uniformMatrix4fv(matProjUniformLocation, false, projMatrix);
-
-    let xRotationMatrix = new Float32Array(16);
-    let yRotationMatrix = new Float32Array(16);
-    let zRotationMatrix = new Float32Array(16);
-    let auxMatrix = new Float32Array(16);
-
-    var ambientUniformLocation = this.gl.getUniformLocation(program, 'ambientLightIntensity');
-    var sunlightDirUniformLocation = this.gl.getUniformLocation(program, 'sun.direction');
-    var sunlightIntUniformLocation = this.gl.getUniformLocation(program, 'sun.color');
-
-    this.gl.uniform3f(ambientUniformLocation, 0.2, 0.2, 0.2);
-    this.gl.uniform3f(sunlightDirUniformLocation, 3.0, 4.0, -2.0);
-    this.gl.uniform3f(sunlightIntUniformLocation, 0.9, 0.9, 0.9);
+    var vertexBuffer = this.gl.createBuffer();
+    var vertices = [
+      -1, 1,
+      -1, -1,
+      1, -1,
       
-    let angle = 0;
-    let identityMatrix = new Float32Array(16);
-    mat4.identity(identityMatrix);
-    mat4.rotate(xRotationMatrix, identityMatrix, Math.PI / 2, [1, 0, 0]);
-    mat4.rotate(zRotationMatrix, identityMatrix, Math.PI, [0, 0, 1]);
+      -1, 1,
+      1, 1,
+      1, -1
+    ];
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+
+    var vPosAttrib = this.gl.getAttribLocation(program, 'vPos');
+    this.gl.vertexAttribPointer(
+      vPosAttrib,
+      2, this.gl.FLOAT,
+      false,
+      2 * Float32Array.BYTES_PER_ELEMENT,
+      0
+    );
+    this.gl.enableVertexAttribArray(vPosAttrib);
+
+    var thisframetime;
+    var lastframetime = performance.now();
+    var dt;
+    var frames = [];
+    var lastPrintTime = performance.now();
+    
     const loop = () => {
-      angle = performance.now() / 1000 / 6 * 2 * Math.PI;
-      // mat4.rotate(zRotationMatrix, identityMatrix, angle, [0, 0, 1]);
-      // mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]);
-      // mat4.rotate(xRotationMatrix, identityMatrix, angle, [1, 0, 0]);
-      // mat4.mul(auxMatrix, zRotationMatrix, xRotationMatrix);
-      // mat4.mul(worldMatrix,yRotationMatrix, auxMatrix);
-      //mat4.rotate(worldMatrix, identityMatrix, angle, [0, 1, 0]);
+      thisframetime = performance.now();
+      dt = thisframetime - lastframetime;
+      lastframetime = thisframetime;
+      frames.push(dt);
+      if (lastPrintTime + 750 < thisframetime) {
+        lastPrintTime = thisframetime;
+        var average = 0;
+        for (var i = 0; i < frames.length; i++) {
+          average += frames[i];
+        }
+        average /= frames.length;
+        document.title = 1000 / average + ' fps';
+      }
+      frames = frames.slice(0, 250);
 
-      mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]);
-      mat4.mul(auxMatrix, zRotationMatrix, xRotationMatrix);
-      mat4.mul(worldMatrix, yRotationMatrix, auxMatrix);
-
-      this.gl.uniformMatrix4fv(matWorldUniformLocation, false, worldMatrix);
-
-      this.gl.clearColor(0.75, 0.85, 0.8, 1.0);
+      this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-      this.gl.bindTexture(this.gl.TEXTURE_2D, susanTexture);
-		  this.gl.activeTexture(this.gl.TEXTURE0);
+      this.gl.uniform2fv(uniforms.viewportDimensions, vpDimensions);
+      this.gl.uniform1f(uniforms.minI, minI);
+      this.gl.uniform1f(uniforms.maxI, maxI);
+      this.gl.uniform1f(uniforms.minR, minR);
+      this.gl.uniform1f(uniforms.maxR, maxR);
 
-      this.gl.drawElements(this.gl.TRIANGLES, susanIndices.length, this.gl.UNSIGNED_SHORT, 0);
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
 
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+
+    const OnResizeWindow = () => {
+      if (!this.canvas) {
+        return;
+      }
+      
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+
+      vpDimensions = [this.canvas.clientWidth, this.canvas.clientHeight];
+
+      var oldRealRange = maxR - minR;
+      var newRealRange = (maxI - minI) * (this.canvas.clientWidth / this.canvas.clientHeight) / 1.4;
+
+      minR -= (newRealRange - oldRealRange) / 2;
+      maxR = (maxI - minI) * (this.canvas.clientWidth / this.canvas.clientHeight) / 1.4 + minR;
+
+      console.log(minR, maxR, minI, maxI);
+      
+      
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    function OnZoom(e) {
+      var imaginaryRange = maxI - minI;
+      var newRange;
+      if (e.deltaY < 0) {
+        newRange = imaginaryRange * 0.95;
+      } else {
+        newRange = imaginaryRange * 1.05;
+      }
+  
+      var delta = newRange - imaginaryRange;
+  
+      minI -= delta / 2;
+      maxI = minI + newRange;
+  
+      OnResizeWindow();
+    }
+  
+    function OnMouseMove(e) {
+      if (e.buttons === 1) {
+        var iRange = maxI - minI;
+        var rRange = maxR - minR;
+  
+        var iDelta = (e.movementY / this.canvas.clientHeight) * iRange;
+        var rDelta = (e.movementX / this.canvas.clientWidth) * rRange;
+  
+        minI += iDelta;
+        maxI += iDelta;
+        minR -= rDelta;
+        maxR -= rDelta;
+      }
+    }
+
+    OnResizeWindow();
+    this.AddEvent(window, 'resize', OnResizeWindow);
+    this.AddEvent(window, 'wheel', OnZoom);
+    this.AddEvent(window, 'mousemove', OnMouseMove);
   }
+
+  AddEvent(object, type, callback) {
+    if (object == null || typeof(object) == 'undefined') return;
+    if (object.addEventListener) {
+        object.addEventListener(type, callback, false);
+    } else if (object.attachEvent) {
+        object.attachEvent("on" + type, callback);
+    } else {
+        object["on"+type] = callback;
+    }
+  };
+  
+  RemoveEvent(object, type, callback) {
+    if (object == null || typeof(object) == 'undefined') return;
+    if (object.removeEventListener) {
+        object.removeEventListener(type, callback, false);
+    } else if (object.detachEvent) {
+        object.detachEvent("on" + type, callback);
+    } else {
+        object["on"+type] = callback;
+    }
+  };
 
 }

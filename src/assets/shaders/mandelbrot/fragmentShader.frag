@@ -1,25 +1,37 @@
 precision mediump float;
 
-struct DirectionalLight
-{
-	vec3 direction;
-	vec3 color;
-};
-
-varying vec2 fragTexCoord;
-varying vec3 fragNormal;
-
-uniform vec3 ambientLightIntensity;
-uniform DirectionalLight sun;
-uniform sampler2D sampler;
+uniform vec2 viewportDimensions;
+uniform float minI;
+uniform float maxI;
+uniform float minR;
+uniform float maxR;
 
 void main() {
-    vec3 surfaceNormal = normalize(fragNormal);
-	vec3 normSunDir = normalize(sun.direction);
-	vec4 texel = texture2D(sampler, fragTexCoord);
+	vec2 c = vec2(
+		gl_FragCoord.x * (maxR - minR) / viewportDimensions.x + minR,
+		gl_FragCoord.y * (maxI - minI) / viewportDimensions.y + minI
+	);
 
-	vec3 lightIntensity = ambientLightIntensity +
-		sun.color * max(dot(fragNormal, normSunDir), 0.0);
+	vec2 z = c;
+	float iterations = 0.0;
+	float maxIterations = 1000.0;
+	const int imaxIterations = 1000;
 
-	gl_FragColor = vec4(texel.rgb * lightIntensity, texel.a);
+	for (int i = 0; i < imaxIterations; i++) {
+		float t = 2.0 * z.x * z.y + c.y;
+		z.x = z.x * z.x - z.y * z.y + c.x;
+		z.y = t;
+
+		if (z.x * z.x + z.y * z.y > 4.0) {
+			break;
+		}
+
+		iterations += 1.0;
+	}
+
+	if (iterations < maxIterations) {
+		discard;
+	} else {
+		gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+	}
 }
