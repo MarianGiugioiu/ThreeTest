@@ -73,14 +73,14 @@ export class MandelbrotComponent implements OnInit {
     }
 
     var vpDimensions = [this.canvas.clientWidth, this.canvas.clientHeight];
-    // var minI = -2.0;
-    // var maxI = 2.0;
-    // var minR = -2.0;
-    // var maxR = 2.0;
-    var minR = -0.2070035701573997;
-    var maxR = -0.2058979527517162;
-    var minI = 0.6437000938543829;
-    var maxI = 0.6447288185269139;
+    var minI = -2.0;
+    var maxI = 2.0;
+    var minR = -2.0;
+    var maxR = 2.0;
+    // var minR = -0.2070035701573997;
+    // var maxR = -0.2058979527517162;
+    // var minI = 0.6437000938543829;
+    // var maxI = 0.6447288185269139;
 
     var vertexBuffer = this.gl.createBuffer();
     var vertices = [

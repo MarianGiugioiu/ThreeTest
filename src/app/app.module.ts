@@ -8,6 +8,7 @@ import { MandelbrotComponent } from './mandelbrot/mandelbrot.component';
 import { MandelbulbComponent } from './mandelbulb/mandelbulb.component';
 import { PhysicsComponent } from './physics/physics.component';
 import { ProcmapComponent } from './procmap/procmap.component';
+import { RaycastingComponent } from './raycasting/raycasting.component';
 import { ShadersComponent } from './shaders/shaders.component';
 import { WebglComponent } from './webgltest/webgl.component';
 
@@ -20,7 +21,8 @@ import { WebglComponent } from './webgltest/webgl.component';
     MandelbulbComponent,
     ShadersComponent,
     WebglComponent,
-    MandelbrotComponent
+    MandelbrotComponent,
+    RaycastingComponent
   ],
   imports: [
     BrowserModule,
