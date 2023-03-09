@@ -4,6 +4,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { CubeComponent } from './cube/cube.component';
+import { GenerateLineComponent } from './generate-line/generate-line.component';
 import { MandelbrotComponent } from './mandelbrot/mandelbrot.component';
 import { MandelbulbComponent } from './mandelbulb/mandelbulb.component';
 import { PhysicsComponent } from './physics/physics.component';
@@ -22,7 +23,8 @@ import { WebglComponent } from './webgltest/webgl.component';
     ShadersComponent,
     WebglComponent,
     MandelbrotComponent,
-    RaycastingComponent
+    RaycastingComponent,
+    GenerateLineComponent
   ],
   imports: [
     BrowserModule,
