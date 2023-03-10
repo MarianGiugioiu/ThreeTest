@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import * as THREE from 'three';
 import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -29,8 +29,19 @@ export class GenerateLineComponent implements OnInit {
   private mouse: THREE.Vector2;
   private raycaster: THREE.Raycaster;
 
+  private currentHeight;
+  private currentBh;
+  private mainObject: THREE.Mesh;
+  private heightPointMesh: THREE.Mesh;
+  private heightPoint: THREE.Vector2;
+
+  private points;
+
   widthRatio: number;
   heightRatio: number;
+
+  value: number = 0;
+  public isKeyPressed = false;
 
   constructor() { }
 
@@ -86,22 +97,7 @@ export class GenerateLineComponent implements OnInit {
     };
     //addNewBoxMesh(0, 0, 0);
 
-    const addPoint = (x, y, z, name) => {
-      const circleGeometry = new THREE.CircleGeometry(0.1, 32);
-
-    // Create a material with white color
-      const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-      // Create a mesh from the geometry and material
-      const circle = new THREE.Mesh(circleGeometry, ciclreMaterial);
-
-      circle.position.set(x, y, z);
-      circle.name = name;
-
-      this.scene.add(circle);
-    };
-
-    const points = [
+    this.points = [
       new THREE.Vector2(-0.5, -0.5),
       new THREE.Vector2(-0.5, 0.5),
       new THREE.Vector2(0.5, 0.5),
@@ -109,20 +105,13 @@ export class GenerateLineComponent implements OnInit {
     ];
     
     // Create a shape from the points
-    //const shape = new THREE.Shape(points);
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.5, -0.5);
-    shape.lineTo(-0.5, 0.5);
-    shape.quadraticCurveTo(0, 0.8, 0.5, 0.5); // add a quadratic curve
-    shape.lineTo(0.5, -0.5);
-    shape.lineTo(-0.5, -0.5);
-
+    const shape = new THREE.Shape(this.points);
     // const shape = new THREE.Shape();
-    // shape.moveTo(0, 0);
-    // shape.lineTo(0, 1);
-    // shape.quadraticCurveTo(0.5, 2, 1, 1); // add a quadratic curve
-    // shape.lineTo(1, 0);
-    // shape.lineTo(0, 0);
+    // shape.moveTo(-0.5, -0.5);
+    // shape.lineTo(-0.5, 0.5);
+    // shape.quadraticCurveTo(0, 0.8, 0.5, 0.5); // add a quadratic curve
+    // shape.lineTo(0.5, -0.5);
+    // shape.lineTo(-0.5, -0.5);
     
     // Create a geometry from the shape
     const geometry = new THREE.ShapeGeometry(shape);
@@ -136,16 +125,16 @@ export class GenerateLineComponent implements OnInit {
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
     // Create a line from the geometry and material
-    const line = new THREE.Mesh(geometry, material);
-    line.name = 'line'
+    this.mainObject = new THREE.Mesh(geometry, material);
+    this.mainObject.name = 'line'
     
     // Add the line to the scene
-    this.scene.add(line);
+    this.scene.add(this.mainObject);
 
-    addPoint(-0.5, -0.5, 0, '0');
-    addPoint(-0.5, 0.5, 0, '1');
-    addPoint(0.5, 0.5, 0, '2');
-    addPoint(0.5, -0.5, 0, '3');
+    this.addPoint(-0.5, -0.5, 0, '0');
+    this.addPoint(-0.5, 0.5, 0, '1');
+    this.addPoint(0.5, 0.5, 0, '2');
+    this.addPoint(0.5, -0.5, 0, '3');
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
@@ -170,27 +159,31 @@ export class GenerateLineComponent implements OnInit {
           const position = intersect.point.sub(this.startPosition);
           this.selectedObject.position.copy(position);
 
-          points[+this.selectedObject.name] = new THREE.Vector2(position.x, position.y);
+          this.points[+this.selectedObject.name] = new THREE.Vector2(position.x, position.y);
+          const A = this.calculateAngle(this.points[2], this.points[1], this.points[3]);
+          const B = this.calculateAngle(this.points[1], this.points[2], this.points[3]);
+          this.currentBh = 90 - B;
+          const C = 180 - A - B;
+          const Ch = 90 - C;
           
-          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(points);
+          this.currentHeight = this.getHeight(this.points[2], this.points[1], this.points[3]);
+          this.heightPoint = this.getHeightPoint(this.points[2], this.points[1], this.points[3], this.currentHeight);
+          
+          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(this.points);
 
           if (!isVAlidShape) {
-            console.log("Shape is valid and has non-intersecting edges");
-            if (!line.visible) {
-              line.visible = true;
+            if (!this.mainObject.visible) {
+              this.mainObject.visible = true;
             }
-            const shape = new THREE.Shape(points);
-            line.geometry = new THREE.ShapeGeometry(shape);
+            const shape = new THREE.Shape(this.points);
+            this.mainObject.geometry = new THREE.ShapeGeometry(shape);
           } else {
-            console.log("Shape is invalid and has intersecting edges");
-            if (line.visible) {
-              line.visible = false;
+            if (this.mainObject.visible) {
+              this.mainObject.visible = false;
             }
           }
- 
         }
       }
-      
     };
 
     const onMouseDown = (event) => {
@@ -199,7 +192,7 @@ export class GenerateLineComponent implements OnInit {
       // change color of the closest object intersecting the raycaster
       if (intersects.length > 0) {
         this.selectedObject = intersects[0].object  as THREE.Mesh;
-        if (this.selectedObject.name !== 'line') {
+        if (this.selectedObject && this.selectedObject.name !== 'line') {
           (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
           this.dragging = true;
           this.startPosition = intersects[0].point.sub(this.selectedObject.position);
@@ -208,15 +201,68 @@ export class GenerateLineComponent implements OnInit {
     };
 
     const onMouseUp = (event) => {
-      if (this.selectedObject.name !== 'line') {
+      if (this.selectedObject && this.selectedObject.name !== 'line') {
         (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
         this.dragging = false;
+        if (this.heightPointMesh) {
+          this.heightPointMesh.geometry = undefined;
+          this.heightPointMesh.material= undefined;
+          this.scene.remove( this.heightPointMesh );
+        }
       }
     };
 
     this.canvas.addEventListener('mousemove', onMouseMove);
     this.canvas.addEventListener('mousedown', onMouseDown);
     this.canvas.addEventListener('mouseup', onMouseUp);
+
+    document.addEventListener('keydown', this.onKeyDown.bind(this));
+    document.addEventListener('keyup', this.onKeyUp.bind(this));
+  }
+
+  addPoint(x, y, z, name) {
+    const circleGeometry = new THREE.CircleGeometry(0.1, 32);
+
+  // Create a material with white color
+    const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // Create a mesh from the geometry and material
+    const circle = new THREE.Mesh(circleGeometry, ciclreMaterial);
+
+    circle.position.set(x, y, z);
+    circle.name = name;
+
+    this.scene.add(circle);
+    return circle;
+  };
+
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key === '3') {
+      this.isKeyPressed = true;
+      this.updateValue();
+    }
+  }
+  
+  onKeyUp(event: KeyboardEvent) {
+    if (event.key === '3') {
+      this.isKeyPressed = false;
+    }
+  }
+  
+  updateValue() {
+    if (this.isKeyPressed) {
+      this.currentBh++;
+      
+      const newPoint = this.addToAngle(this.currentHeight, this.heightPoint, this.points[1], this.currentBh);
+      this.points[1] = newPoint;
+      
+      const shape = new THREE.Shape(this.points);
+      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      
+      setTimeout(() => {
+        requestAnimationFrame(this.updateValue.bind(this));
+      }, 100);
+    }
   }
 
   onWindowResize() {
@@ -253,4 +299,83 @@ export class GenerateLineComponent implements OnInit {
     const cp4 = dx2 * (p1.y - p2.y) - dy2 * (p1.x - p2.x);
     return (cp1 * cp2 < 0) && (cp3 * cp4 < 0);
   }
+
+  addToAngle(height, point1, point2, angle) {
+    const length = height / Math.sin(THREE.MathUtils.degToRad(angle));
+    const vector = point2.clone().sub(point1);
+    const newVector = vector.clone().normalize().multiplyScalar(length);
+    
+    // console.log(vector);
+    // console.log(newVector);
+
+    return point1.clone().add(newVector);
+  }
+
+  calculateAngle(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const vectorA = point2.clone().sub(point1);
+    const vectorB = point3.clone().sub(point1);
+    let angle = Math.atan2(vectorB.y, vectorB.x) - Math.atan2(vectorA.y, vectorA.x);
+    angle = angle < 0 ? angle + 2 * Math.PI : angle; // convert to positive angle if negative
+    angle = angle > Math.PI ? 2 * Math.PI - angle : angle;
+
+    // Convert the angle to degrees
+    const angleInDegrees = THREE.MathUtils.radToDeg(angle);
+    
+    return angleInDegrees;
+  }
+
+  getHeightPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2, height) {
+    const vectorC = point2.clone().sub(point3).normalize();
+    const projectionVector = new THREE.Vector2(-vectorC.y, vectorC.x);
+    projectionVector.multiplyScalar(height);
+    const point4 = point1.clone().add(projectionVector);
+
+    if (this.heightPointMesh) {
+      this.heightPointMesh.geometry = undefined;
+      this.heightPointMesh.material= undefined;
+      this.scene.remove( this.heightPointMesh );
+    }
+    this.heightPointMesh = this.addPoint(point4.x, point4.y, 0, 'extra');
+
+    return point4;
+  }
+
+  getHeight(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const base = point2.distanceTo(point3);
+    const height = (2 * this.getTriangleArea(point1, point2, point3)) / base;
+    
+    return height;
+  }
+
+  
+  getTriangleArea(a, b, c) {
+    const ab = b.clone().sub(a);
+    const ac = c.clone().sub(a);
+    return Math.abs(ab.cross(ac)) / 2;
+  }
+
+  // @HostListener('document:keydown.3')
+  // onKeydown() {
+  //   this.status = true;
+  //   this.update()
+  // }
+
+  // @HostListener('document:keyup.3')
+  // onKeyup() {
+  //   this.status = false;
+  //   this.update()
+  // }
+
+  // update() {
+  //   if (this.status) {
+  //     this.interval = setInterval(() => {
+  //       this.value++;
+  //       console.log(this.value);333
+        
+  //     }, 100);    
+  //   } else {
+  //     if (this.interval) clearInterval(this.interval);
+  //   }
+    
+  // }
 }
