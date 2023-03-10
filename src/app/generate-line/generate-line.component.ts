@@ -65,7 +65,7 @@ export class GenerateLineComponent implements OnInit {
     // this.controls.update();
 
     const textureLoader = new THREE.TextureLoader();
-    this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
+    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
 
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(this.ambientLight);
@@ -101,11 +101,6 @@ export class GenerateLineComponent implements OnInit {
       this.scene.add(circle);
     };
 
-    addPoint(-0.5, -0.5, 0, '0');
-    addPoint(0.5, -0.5, 0, '1');
-    addPoint(0.5, 0.5, 0, '2');
-    addPoint(-0.5, 0.5, 0, '3');
-
     const points = [
       new THREE.Vector2(-0.5, -0.5),
       new THREE.Vector2(-0.5, 0.5),
@@ -114,20 +109,43 @@ export class GenerateLineComponent implements OnInit {
     ];
     
     // Create a shape from the points
-    const shape = new THREE.Shape(points);
+    //const shape = new THREE.Shape(points);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.5, -0.5);
+    shape.lineTo(-0.5, 0.5);
+    shape.quadraticCurveTo(0, 0.8, 0.5, 0.5); // add a quadratic curve
+    shape.lineTo(0.5, -0.5);
+    shape.lineTo(-0.5, -0.5);
+
+    // const shape = new THREE.Shape();
+    // shape.moveTo(0, 0);
+    // shape.lineTo(0, 1);
+    // shape.quadraticCurveTo(0.5, 2, 1, 1); // add a quadratic curve
+    // shape.lineTo(1, 0);
+    // shape.lineTo(0, 0);
     
     // Create a geometry from the shape
-    const geometry = new THREE.ShapeGeometry(shape, 1);
+    const geometry = new THREE.ShapeGeometry(shape);
+
+    const texture = textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80');
     
     // Create a material for the lines
-    const material = new THREE.LineBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-    
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    material.map.repeat.set(0.25, 0.25);
+    material.map.offset.set(0.5, 0.5);
+    material.map.wrapS = THREE.RepeatWrapping;
+    material.map.wrapT = THREE.RepeatWrapping;
     // Create a line from the geometry and material
-    const line = new THREE.Line(geometry, material);
+    const line = new THREE.Mesh(geometry, material);
     line.name = 'line'
     
     // Add the line to the scene
     this.scene.add(line);
+
+    addPoint(-0.5, -0.5, 0, '0');
+    addPoint(-0.5, 0.5, 0, '1');
+    addPoint(0.5, 0.5, 0, '2');
+    addPoint(0.5, -0.5, 0, '3');
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
@@ -154,16 +172,22 @@ export class GenerateLineComponent implements OnInit {
 
           points[+this.selectedObject.name] = new THREE.Vector2(position.x, position.y);
           
-          const shape = new THREE.Shape(points);
-          
-          const isClockwise = this.doesPolygonHaveIntersectingEdges(points);
+          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(points);
 
-          if (!isClockwise) {
+          if (!isVAlidShape) {
             console.log("Shape is valid and has non-intersecting edges");
+            if (!line.visible) {
+              line.visible = true;
+            }
+            const shape = new THREE.Shape(points);
+            line.geometry = new THREE.ShapeGeometry(shape);
           } else {
             console.log("Shape is invalid and has intersecting edges");
+            if (line.visible) {
+              line.visible = false;
+            }
           }
-          line.geometry = new THREE.ShapeGeometry(shape);
+ 
         }
       }
       
@@ -184,8 +208,10 @@ export class GenerateLineComponent implements OnInit {
     };
 
     const onMouseUp = (event) => {
-      (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
-      this.dragging = false;
+      if (this.selectedObject.name !== 'line') {
+        (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
+        this.dragging = false;
+      }
     };
 
     this.canvas.addEventListener('mousemove', onMouseMove);
