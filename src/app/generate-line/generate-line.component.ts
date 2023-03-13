@@ -42,6 +42,7 @@ export class GenerateLineComponent implements OnInit {
 
   value: number = 0;
   public isKeyPressed = false;
+  sign = -1;
 
   constructor() { }
 
@@ -237,30 +238,126 @@ export class GenerateLineComponent implements OnInit {
   };
 
   onKeyDown(event: KeyboardEvent) {
+    if (event.key === '1') {
+      this.isKeyPressed = true;
+      this.sign = -1;
+      this.value = 0;
+      this.changeAngle();
+    }
+    if (event.key === '2') {
+      this.isKeyPressed = true;
+      this.sign = 1;
+      this.value = 0;
+      this.changeAngle();
+    }
+
     if (event.key === '3') {
       this.isKeyPressed = true;
-      this.updateValue();
+      this.sign = -1;
+      this.value = 0;
+      this.doubleChangeAngle();
+    }
+    if (event.key === '4') {
+      this.isKeyPressed = true;
+      this.sign = 1;
+      this.value = 0;
+      this.doubleChangeAngle();
+    }
+
+    if (event.key === '6') {
+      this.isKeyPressed = true;
+      this.sign = 1;
+      this.value = 0;
+      this.changeLength();
+    }
+    if (event.key === '7') {
+      this.isKeyPressed = true;
+      this.sign = -1;
+      this.value = 0;
+      this.changeLength();
+    }
+    if(event.key === '5') {
+      const newPoint = this.movePointToMediatingLine(this.points[2], this.points[1], this.points[3]);
+      console.log(newPoint);
+      
+      this.points[2] = newPoint;
+      this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      
+      const shape = new THREE.Shape(this.points);
+      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+    }
+
+    if (event.key === '8') {
+      const newPoint = this.equalizeEdges(this.points[2], this.points[1], this.points[3]);
+      console.log(newPoint);
+      
+      this.points[1] = newPoint;
+      this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      
+      const shape = new THREE.Shape(this.points);
+      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
     }
   }
   
   onKeyUp(event: KeyboardEvent) {
-    if (event.key === '3') {
+    if (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4' || event.key === '6' || event.key === '7') {
       this.isKeyPressed = false;
+      
     }
   }
   
-  updateValue() {
+  changeAngle() {
     if (this.isKeyPressed) {
-      this.currentBh++;
+      this.value += this.sign * 0.01;
       
-      const newPoint = this.addToAngle(this.currentHeight, this.heightPoint, this.points[1], this.currentBh);
+      const newPoint = this.rotateAroundPoint(this.points[2], this.points[1], this.value);
+      console.log(newPoint);
+      
       this.points[1] = newPoint;
+      this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
       
       const shape = new THREE.Shape(this.points);
       this.mainObject.geometry = new THREE.ShapeGeometry(shape);
       
       setTimeout(() => {
-        requestAnimationFrame(this.updateValue.bind(this));
+        requestAnimationFrame(this.changeAngle.bind(this));
+      }, 100);
+    }
+  }
+
+  doubleChangeAngle() {
+    if (this.isKeyPressed) {
+      this.value += this.sign * 0.01;
+      console.log(-this.value);
+      
+      
+      this.points[1] = this.rotateAroundPoint(this.points[2], this.points[1], this.value);
+
+      this.points[3] = this.rotateAroundPoint(this.points[2], this.points[3], -this.value);
+
+      const shape = new THREE.Shape(this.points);
+      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      
+      setTimeout(() => {
+        requestAnimationFrame(this.doubleChangeAngle.bind(this));
+      }, 100);
+    }
+  }
+
+  changeLength() {
+    if (this.isKeyPressed) {
+      this.value += this.sign * 0.01;
+      
+      const newPoint = this.addToEdgeLength(this.points[2], this.points[1], this.value);
+      
+      this.points[1] = newPoint;
+      this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      
+      const shape = new THREE.Shape(this.points);
+      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      
+      setTimeout(() => {
+        requestAnimationFrame(this.changeLength.bind(this));
       }, 100);
     }
   }
@@ -300,6 +397,25 @@ export class GenerateLineComponent implements OnInit {
     return (cp1 * cp2 < 0) && (cp3 * cp4 < 0);
   }
 
+  equalizeEdges(point1, point2, point3) {
+    const length = point1.distanceTo(point3);
+    
+    return this.changeEdgeLength(point1, point2, length);
+  }
+
+  rotateAroundPoint(point1, point2, angle) {
+    return point2.clone().sub(point1).rotateAround(new THREE.Vector2(0, 0), angle).add(point1);
+  }
+
+  changeEdgeLength(point1, point2, length) {
+    return point2.clone().sub(point1).normalize().multiplyScalar(length).add(point1);
+  }
+
+  addToEdgeLength(point1, point2, bonusLength) {
+    const length = point1.distanceTo(point2) + bonusLength;
+    return this.changeEdgeLength(point1, point2, length);
+  }
+
   addToAngle(height, point1, point2, angle) {
     const length = height / Math.sin(THREE.MathUtils.degToRad(angle));
     const vector = point2.clone().sub(point1);
@@ -309,6 +425,29 @@ export class GenerateLineComponent implements OnInit {
     // console.log(newVector);
 
     return point1.clone().add(newVector);
+  }
+
+  movePointToMediatingLine(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const middle = new THREE.Vector2(
+      (point3.x + point2.x) / 2,
+      (point3.y + point2.y) / 2
+    );
+    let length = point1.distanceTo(middle);
+    const vectorC = point2.clone().sub(point3).normalize();
+    const projectionVector = new THREE.Vector2(-vectorC.y, vectorC.x);
+    if(this.isPointAboveEdge(point1, point2, point3) >= 0) {
+      length = -length;
+    }
+    
+    projectionVector.multiplyScalar(length);
+    const point4 = middle.clone().add(projectionVector);
+    return point4;
+  }
+
+  isPointAboveEdge(point1, point2, point3) {
+    const edgeNormal = new THREE.Vector2(-(point3.y - point2.y), point3.x - point2.x).normalize();
+    const pointVector = new THREE.Vector2(point1.x - point2.x, point1.y - point2.y);
+    return pointVector.dot(edgeNormal);
   }
 
   calculateAngle(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
@@ -335,7 +474,7 @@ export class GenerateLineComponent implements OnInit {
       this.heightPointMesh.material= undefined;
       this.scene.remove( this.heightPointMesh );
     }
-    this.heightPointMesh = this.addPoint(point4.x, point4.y, 0, 'extra');
+    //this.heightPointMesh = this.addPoint(point4.x, point4.y, 0, 'extra');
 
     return point4;
   }
@@ -354,28 +493,5 @@ export class GenerateLineComponent implements OnInit {
     return Math.abs(ab.cross(ac)) / 2;
   }
 
-  // @HostListener('document:keydown.3')
-  // onKeydown() {
-  //   this.status = true;
-  //   this.update()
-  // }
-
-  // @HostListener('document:keyup.3')
-  // onKeyup() {
-  //   this.status = false;
-  //   this.update()
-  // }
-
-  // update() {
-  //   if (this.status) {
-  //     this.interval = setInterval(() => {
-  //       this.value++;
-  //       console.log(this.value);333
-        
-  //     }, 100);    
-  //   } else {
-  //     if (this.interval) clearInterval(this.interval);
-  //   }
-    
-  // }
+  
 }
