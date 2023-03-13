@@ -4,6 +4,12 @@ import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import starsImg from 'src/assets/images/stars.jpg';
 
+interface IPoint {
+  point?: THREE.Vector2;
+  type?: string;
+  object?: THREE.Mesh;
+}
+
 @Component({
   selector: 'app-generate-line',
   templateUrl: './generate-line.component.html',
@@ -20,7 +26,6 @@ export class GenerateLineComponent implements OnInit {
   private camera: THREE.OrthographicCamera;
   private controls: OrbitControls;
   private ambientLight: THREE.AmbientLight;
-  private directionalLight: THREE.DirectionalLight;
   private canvasWidth = 600;
   private canvasHeight = 600;
   private dragging = false;
@@ -35,7 +40,7 @@ export class GenerateLineComponent implements OnInit {
   private heightPointMesh: THREE.Mesh;
   private heightPoint: THREE.Vector2;
 
-  private points;
+  private points: IPoint[];
 
   widthRatio: number;
   heightRatio: number;
@@ -43,6 +48,8 @@ export class GenerateLineComponent implements OnInit {
   value: number = 0;
   public isKeyPressed = false;
   sign = -1;
+
+  textureLoader: THREE.TextureLoader;
 
   constructor() { }
 
@@ -57,12 +64,6 @@ export class GenerateLineComponent implements OnInit {
     this.renderer.shadowMap.enabled = true;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
-    // this.camera = new THREE.PerspectiveCamera(
-    //   45,
-    //   this.canvasWidth / this.canvasHeight,
-    //   1,
-    //   1000
-    // );
     this.camera = new THREE.OrthographicCamera(
       this.canvasWidth / -200, // left
       this.canvasWidth / 200, // right
@@ -73,69 +74,34 @@ export class GenerateLineComponent implements OnInit {
     );
     this.camera.position.set(0, 0, 10);
 
-    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    // this.controls.update();
-
-    const textureLoader = new THREE.TextureLoader();
+    this.textureLoader = new THREE.TextureLoader();
     //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
 
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(this.ambientLight);
 
-    // this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    // // this.directionalLight.castShadow = true;
-    // this.directionalLight.position.set(0, 32, 64);
-    // this.scene.add(this.directionalLight);
-
-    const addNewBoxMesh = (x, y, z) => {
-      const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-      const boxMaterial = new THREE.MeshPhongMaterial({
-        color: 0xfafafa,
-      });
-      const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
-      boxMesh.position.set(x, y, z);
-      this.scene.add(boxMesh);
-    };
-    //addNewBoxMesh(0, 0, 0);
-
     this.points = [
-      new THREE.Vector2(-0.5, -0.5),
-      new THREE.Vector2(-0.5, 0.5),
-      new THREE.Vector2(0.5, 0.5),
-      new THREE.Vector2(0.5, -0.5),
+      {
+        point: new THREE.Vector2(-0.5, -0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(-0.5, 0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(0.5, 0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(0.5, -0.5),
+        type: 'line'
+      }
     ];
-    
-    // Create a shape from the points
-    const shape = new THREE.Shape(this.points);
-    // const shape = new THREE.Shape();
-    // shape.moveTo(-0.5, -0.5);
-    // shape.lineTo(-0.5, 0.5);
-    // shape.quadraticCurveTo(0, 0.8, 0.5, 0.5); // add a quadratic curve
-    // shape.lineTo(0.5, -0.5);
-    // shape.lineTo(-0.5, -0.5);
-    
-    // Create a geometry from the shape
-    const geometry = new THREE.ShapeGeometry(shape);
 
-    const texture = textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80');
+    this.drawMainObject();
     
-    // Create a material for the lines
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    material.map.repeat.set(0.25, 0.25);
-    material.map.offset.set(0.5, 0.5);
-    material.map.wrapS = THREE.RepeatWrapping;
-    material.map.wrapT = THREE.RepeatWrapping;
-    // Create a line from the geometry and material
-    this.mainObject = new THREE.Mesh(geometry, material);
-    this.mainObject.name = 'line'
-    
-    // Add the line to the scene
-    this.scene.add(this.mainObject);
-
-    this.addPoint(-0.5, -0.5, 0, '0');
-    this.addPoint(-0.5, 0.5, 0, '1');
-    this.addPoint(0.5, 0.5, 0, '2');
-    this.addPoint(0.5, -0.5, 0, '3');
+    this.points.map((item, index) => item.object = this.addPoint(item.point.x, item.point.y, index.toString()));
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
@@ -150,7 +116,6 @@ export class GenerateLineComponent implements OnInit {
     const onMouseMove = (event) => {
       this.mouse.x = ((event.clientX - this.canvas.offsetLeft ) / this.canvasWidth) * 2 - 1;
       this.mouse.y = -((event.clientY - this.canvas.offsetTop) / this.canvasHeight) * 2 + 1;
-      //console.log(pointer.x, pointer.y);
       this.raycaster.setFromCamera(this.mouse, this.camera);
 
       if (this.dragging) {
@@ -160,24 +125,23 @@ export class GenerateLineComponent implements OnInit {
           const position = intersect.point.sub(this.startPosition);
           this.selectedObject.position.copy(position);
 
-          this.points[+this.selectedObject.name] = new THREE.Vector2(position.x, position.y);
-          const A = this.calculateAngle(this.points[2], this.points[1], this.points[3]);
-          const B = this.calculateAngle(this.points[1], this.points[2], this.points[3]);
+          this.points[+this.selectedObject.name].point = new THREE.Vector2(position.x, position.y);
+          const A = this.calculateAngle(this.points[2].point, this.points[1].point, this.points[3].point);
+          const B = this.calculateAngle(this.points[1].point, this.points[2].point, this.points[3].point);
           this.currentBh = 90 - B;
           const C = 180 - A - B;
           const Ch = 90 - C;
           
-          this.currentHeight = this.getHeight(this.points[2], this.points[1], this.points[3]);
-          this.heightPoint = this.getHeightPoint(this.points[2], this.points[1], this.points[3], this.currentHeight);
+          this.currentHeight = this.getHeight(this.points[2].point, this.points[1].point, this.points[3].point);
+          this.heightPoint = this.getHeightPoint(this.points[2].point, this.points[1].point, this.points[3].point, this.currentHeight);
           
-          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(this.points);
+          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
 
           if (!isVAlidShape) {
             if (!this.mainObject.visible) {
               this.mainObject.visible = true;
             }
-            const shape = new THREE.Shape(this.points);
-            this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+            this.mainObject.geometry = this.createShape();
           } else {
             if (this.mainObject.visible) {
               this.mainObject.visible = false;
@@ -221,7 +185,41 @@ export class GenerateLineComponent implements OnInit {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
   }
 
-  addPoint(x, y, z, name) {
+  createShape() {
+    const shape = new THREE.Shape();
+
+    // Move the path to the first point
+    shape.moveTo(this.points[0].point.x, this.points[0].point.y);
+
+    // Create a line to each of the other points
+    for (let i = 1; i < this.points.length; i++) {
+      shape.lineTo(this.points[i].point.x, this.points[i].point.y);
+    }
+
+    shape.closePath();
+    
+    // Create a geometry from the shape
+    return new THREE.ShapeGeometry(shape);
+  }
+
+  drawMainObject() {
+    const texture = this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80');
+    
+    // Create a material for the lines
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    material.map.repeat.set(0.25, 0.25);
+    material.map.offset.set(0.5, 0.5);
+    material.map.wrapS = THREE.RepeatWrapping;
+    material.map.wrapT = THREE.RepeatWrapping;
+    // Create a line from the geometry and material
+    this.mainObject = new THREE.Mesh(this.createShape(), material);
+    this.mainObject.name = 'line'
+    
+    // Add the line to the scene
+    this.scene.add(this.mainObject);
+  }
+
+  addPoint(x, y, name) {
     const circleGeometry = new THREE.CircleGeometry(0.1, 32);
 
   // Create a material with white color
@@ -230,7 +228,7 @@ export class GenerateLineComponent implements OnInit {
     // Create a mesh from the geometry and material
     const circle = new THREE.Mesh(circleGeometry, ciclreMaterial);
 
-    circle.position.set(x, y, z);
+    circle.position.set(x, y, 0);
     circle.name = name;
 
     this.scene.add(circle);
@@ -277,25 +275,23 @@ export class GenerateLineComponent implements OnInit {
       this.changeLength();
     }
     if(event.key === '5') {
-      const newPoint = this.movePointToMediatingLine(this.points[2], this.points[1], this.points[3]);
+      const newPoint = this.movePointToMediatingLine(this.points[2].point, this.points[1].point, this.points[3].point);
       console.log(newPoint);
       
-      this.points[2] = newPoint;
+      this.points[2].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
       
-      const shape = new THREE.Shape(this.points);
-      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      this.mainObject.geometry = this.createShape();
     }
 
     if (event.key === '8') {
-      const newPoint = this.equalizeEdges(this.points[2], this.points[1], this.points[3]);
+      const newPoint = this.equalizeEdges(this.points[2].point, this.points[1].point, this.points[3].point);
       console.log(newPoint);
       
-      this.points[1] = newPoint;
+      this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
       
-      const shape = new THREE.Shape(this.points);
-      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      this.mainObject.geometry = this.createShape();
     }
   }
   
@@ -310,14 +306,13 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed) {
       this.value += this.sign * 0.01;
       
-      const newPoint = this.rotateAroundPoint(this.points[2], this.points[1], this.value);
+      const newPoint = this.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
       console.log(newPoint);
       
-      this.points[1] = newPoint;
+      this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      
-      const shape = new THREE.Shape(this.points);
-      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+
+      this.mainObject.geometry = this.createShape();
       
       setTimeout(() => {
         requestAnimationFrame(this.changeAngle.bind(this));
@@ -331,12 +326,11 @@ export class GenerateLineComponent implements OnInit {
       console.log(-this.value);
       
       
-      this.points[1] = this.rotateAroundPoint(this.points[2], this.points[1], this.value);
+      this.points[1].point = this.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
 
-      this.points[3] = this.rotateAroundPoint(this.points[2], this.points[3], -this.value);
+      this.points[3].point = this.rotateAroundPoint(this.points[2].point, this.points[3].point, -this.value);
 
-      const shape = new THREE.Shape(this.points);
-      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      this.mainObject.geometry = this.createShape();
       
       setTimeout(() => {
         requestAnimationFrame(this.doubleChangeAngle.bind(this));
@@ -348,13 +342,12 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed) {
       this.value += this.sign * 0.01;
       
-      const newPoint = this.addToEdgeLength(this.points[2], this.points[1], this.value);
+      const newPoint = this.addToEdgeLength(this.points[2].point, this.points[1].point, this.value);
       
-      this.points[1] = newPoint;
+      this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
       
-      const shape = new THREE.Shape(this.points);
-      this.mainObject.geometry = new THREE.ShapeGeometry(shape);
+      this.mainObject.geometry = this.createShape();
       
       setTimeout(() => {
         requestAnimationFrame(this.changeLength.bind(this));
@@ -370,7 +363,7 @@ export class GenerateLineComponent implements OnInit {
     this.renderer.setSize(this.canvasWidth, this.canvasHeight);
   }
 
-  doesPolygonHaveIntersectingEdges(points) {
+  doesPolygonHaveIntersectingEdges(points: THREE.Vector2[]) {
     const numPoints = points.length;
     for (let i = 0; i < numPoints; i++) {
         const p1 = points[i];
@@ -385,7 +378,7 @@ export class GenerateLineComponent implements OnInit {
     }
     return false;
   }
-  doEdgesIntersect(p1, q1, p2, q2) {
+  doEdgesIntersect(p1: THREE.Vector2, q1: THREE.Vector2, p2: THREE.Vector2, q2: THREE.Vector2) {
     const dx1 = q1.x - p1.x;
     const dy1 = q1.y - p1.y;
     const dx2 = q2.x - p2.x;
@@ -397,32 +390,29 @@ export class GenerateLineComponent implements OnInit {
     return (cp1 * cp2 < 0) && (cp3 * cp4 < 0);
   }
 
-  equalizeEdges(point1, point2, point3) {
+  equalizeEdges(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
     const length = point1.distanceTo(point3);
     
     return this.changeEdgeLength(point1, point2, length);
   }
 
-  rotateAroundPoint(point1, point2, angle) {
+  rotateAroundPoint(point1: THREE.Vector2, point2: THREE.Vector2, angle: number) {
     return point2.clone().sub(point1).rotateAround(new THREE.Vector2(0, 0), angle).add(point1);
   }
 
-  changeEdgeLength(point1, point2, length) {
+  changeEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, length: number) {
     return point2.clone().sub(point1).normalize().multiplyScalar(length).add(point1);
   }
 
-  addToEdgeLength(point1, point2, bonusLength) {
+  addToEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, bonusLength: number) {
     const length = point1.distanceTo(point2) + bonusLength;
     return this.changeEdgeLength(point1, point2, length);
   }
 
-  addToAngle(height, point1, point2, angle) {
+  addToAngle(height: number, point1: THREE.Vector2, point2: THREE.Vector2, angle:number) {
     const length = height / Math.sin(THREE.MathUtils.degToRad(angle));
     const vector = point2.clone().sub(point1);
     const newVector = vector.clone().normalize().multiplyScalar(length);
-    
-    // console.log(vector);
-    // console.log(newVector);
 
     return point1.clone().add(newVector);
   }
@@ -444,7 +434,7 @@ export class GenerateLineComponent implements OnInit {
     return point4;
   }
 
-  isPointAboveEdge(point1, point2, point3) {
+  isPointAboveEdge(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
     const edgeNormal = new THREE.Vector2(-(point3.y - point2.y), point3.x - point2.x).normalize();
     const pointVector = new THREE.Vector2(point1.x - point2.x, point1.y - point2.y);
     return pointVector.dot(edgeNormal);
@@ -463,7 +453,7 @@ export class GenerateLineComponent implements OnInit {
     return angleInDegrees;
   }
 
-  getHeightPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2, height) {
+  getHeightPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2, height: number) {
     const vectorC = point2.clone().sub(point3).normalize();
     const projectionVector = new THREE.Vector2(-vectorC.y, vectorC.x);
     projectionVector.multiplyScalar(height);
@@ -487,7 +477,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   
-  getTriangleArea(a, b, c) {
+  getTriangleArea(a: THREE.Vector2, b: THREE.Vector2, c: THREE.Vector2) {
     const ab = b.clone().sub(a);
     const ac = c.clone().sub(a);
     return Math.abs(ab.cross(ac)) / 2;
