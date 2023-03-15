@@ -1,13 +1,15 @@
-import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import * as THREE from 'three';
-import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-//import starsImg from 'src/assets/images/stars.jpg';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
+import { GeometryService } from '../common/geometry.service';
 
 interface IPoint {
   point?: THREE.Vector2;
   type?: string;
   object?: THREE.Mesh;
+  text?: THREE.Mesh;
 }
 
 @Component({
@@ -33,14 +35,16 @@ export class GenerateLineComponent implements OnInit {
   private startPosition;
   private mouse: THREE.Vector2;
   private raycaster: THREE.Raycaster;
+  private font;
+  private textOffset = new THREE.Vector2(-0.06, -0.07);
 
-  private currentHeight;
-  private currentBh;
-  private mainObject: THREE.Mesh;
-  private heightPointMesh: THREE.Mesh;
-  private heightPoint: THREE.Vector2;
+  currentHeight;
+  currentBh;
+  mainObject: THREE.Mesh;
+  heightPointMesh: THREE.Mesh;
+  heightPoint: THREE.Vector2;
 
-  private points: IPoint[];
+  points: IPoint[];
 
   widthRatio: number;
   heightRatio: number;
@@ -50,36 +54,13 @@ export class GenerateLineComponent implements OnInit {
   sign = -1;
 
   textureLoader: THREE.TextureLoader;
+  fontLoader: FontLoader
 
-  constructor() { }
+  constructor(
+    public geometryService: GeometryService
+  ) { }
 
   ngOnInit(): void {
-  }
-
-  ngAfterViewInit() {
-    this.canvas.width = this.canvasWidth;
-    this.canvas.height = this.canvasHeight;
-
-    this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
-    this.renderer.shadowMap.enabled = true;
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
-    this.camera = new THREE.OrthographicCamera(
-      this.canvasWidth / -200, // left
-      this.canvasWidth / 200, // right
-      this.canvasHeight / 200, // top
-      this.canvasHeight / -200, // bottom
-      1, // near
-      1000 // far
-    );
-    this.camera.position.set(0, 0, 10);
-
-    this.textureLoader = new THREE.TextureLoader();
-    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
-
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(this.ambientLight);
-
     this.points = [
       {
         point: new THREE.Vector2(-0.5, -0.5),
@@ -98,91 +79,61 @@ export class GenerateLineComponent implements OnInit {
         type: 'line'
       }
     ];
+  }
+
+  async ngAfterViewInit() {
+    this.canvas.width = this.canvasWidth;
+    this.canvas.height = this.canvasHeight;
+
+    this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
+    this.renderer.shadowMap.enabled = true;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x000000);
+    this.camera = new THREE.OrthographicCamera(
+      this.canvasWidth / -200, // left
+      this.canvasWidth / 200, // right
+      this.canvasHeight / 200, // top
+      this.canvasHeight / -200, // bottom
+      1, // near
+      1000 // far
+    );
+    this.camera.position.set(0, 0, 10);
+    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    // this.controls.update();
+
+
+    this.textureLoader = new THREE.TextureLoader();
+    this.fontLoader = new FontLoader();
+    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
+
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(this.ambientLight);
+
+    this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
 
     this.drawMainObject();
     
-    this.points.map((item, index) => item.object = this.addPoint(item.point.x, item.point.y, index.toString()));
-
-    window.addEventListener('resize', () => this.onWindowResize(), false);
-
-    this.renderer.setAnimationLoop(() => {
-      this.renderer.render(this.scene, this.camera);  
-      //this.controls.update();
+    this.points.map((item, index) => {
+      item.object = this.addPoint(item.point, `Point_${index.toString()}`);
+      item.text = this.addText(item.point ,index.toString());
     });
-
+    
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
-
-    const onMouseMove = (event) => {
-      this.mouse.x = ((event.clientX - this.canvas.offsetLeft ) / this.canvasWidth) * 2 - 1;
-      this.mouse.y = -((event.clientY - this.canvas.offsetTop) / this.canvasHeight) * 2 + 1;
-      this.raycaster.setFromCamera(this.mouse, this.camera);
-
-      if (this.dragging) {
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersect = this.raycaster.intersectObject(this.selectedObject)[0];
-        if (intersect) {
-          const position = intersect.point.sub(this.startPosition);
-          this.selectedObject.position.copy(position);
-
-          this.points[+this.selectedObject.name].point = new THREE.Vector2(position.x, position.y);
-          const A = this.calculateAngle(this.points[2].point, this.points[1].point, this.points[3].point);
-          const B = this.calculateAngle(this.points[1].point, this.points[2].point, this.points[3].point);
-          this.currentBh = 90 - B;
-          const C = 180 - A - B;
-          const Ch = 90 - C;
-          
-          this.currentHeight = this.getHeight(this.points[2].point, this.points[1].point, this.points[3].point);
-          this.heightPoint = this.getHeightPoint(this.points[2].point, this.points[1].point, this.points[3].point, this.currentHeight);
-          
-          const isVAlidShape = this.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
-
-          if (!isVAlidShape) {
-            if (!this.mainObject.visible) {
-              this.mainObject.visible = true;
-            }
-            this.mainObject.geometry = this.createShape();
-          } else {
-            if (this.mainObject.visible) {
-              this.mainObject.visible = false;
-            }
-          }
-        }
-      }
-    };
-
-    const onMouseDown = (event) => {
-      const intersects = this.raycaster.intersectObjects(this.scene.children);
-
-      // change color of the closest object intersecting the raycaster
-      if (intersects.length > 0) {
-        this.selectedObject = intersects[0].object  as THREE.Mesh;
-        if (this.selectedObject && this.selectedObject.name !== 'line') {
-          (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
-          this.dragging = true;
-          this.startPosition = intersects[0].point.sub(this.selectedObject.position);
-        }
-      }
-    };
-
-    const onMouseUp = (event) => {
-      if (this.selectedObject && this.selectedObject.name !== 'line') {
-        (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
-        this.dragging = false;
-        if (this.heightPointMesh) {
-          this.heightPointMesh.geometry = undefined;
-          this.heightPointMesh.material= undefined;
-          this.scene.remove( this.heightPointMesh );
-        }
-      }
-    };
-
-    this.canvas.addEventListener('mousemove', onMouseMove);
-    this.canvas.addEventListener('mousedown', onMouseDown);
-    this.canvas.addEventListener('mouseup', onMouseUp);
+    
+    this.renderer.setAnimationLoop(() => {
+      this.renderer.render(this.scene, this.camera);
+      //this.controls.update();
+    });
+    
+    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
 
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('keyup', this.onKeyUp.bind(this));
+
+    window.addEventListener('resize', () => this.onWindowResize(), false);
   }
 
   createShape() {
@@ -202,6 +153,25 @@ export class GenerateLineComponent implements OnInit {
     return new THREE.ShapeGeometry(shape);
   }
 
+  addText(position: THREE.Vector2, text: string) {
+    
+    const textGeometry = new TextGeometry(text, {
+      font: this.font,
+      size: 0.15,
+      height: 0,
+      curveSegments: 10,
+      bevelEnabled: false
+    });
+
+    const textMaterial = new THREE.MeshPhongMaterial({emissive:0x0000ff, emissiveIntensity: 1});
+    
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(position.x + this.textOffset.x, position.y + this.textOffset.y, 0);
+    this.scene.add(textMesh);
+    
+    return textMesh;
+  }
+
   drawMainObject() {
     const texture = this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80');
     
@@ -213,13 +183,13 @@ export class GenerateLineComponent implements OnInit {
     material.map.wrapT = THREE.RepeatWrapping;
     // Create a line from the geometry and material
     this.mainObject = new THREE.Mesh(this.createShape(), material);
-    this.mainObject.name = 'line'
+    this.mainObject.name = 'main_object'
     
     // Add the line to the scene
     this.scene.add(this.mainObject);
   }
 
-  addPoint(x, y, name) {
+  addPoint(position: THREE.Vector2, name, type = 'line') {
     const circleGeometry = new THREE.CircleGeometry(0.1, 32);
 
   // Create a material with white color
@@ -228,11 +198,73 @@ export class GenerateLineComponent implements OnInit {
     // Create a mesh from the geometry and material
     const circle = new THREE.Mesh(circleGeometry, ciclreMaterial);
 
-    circle.position.set(x, y, 0);
+    circle.position.set(position.x, position.y, 0);
     circle.name = name;
 
     this.scene.add(circle);
     return circle;
+  };
+
+  onMouseMove(event) {
+    this.mouse.x = ((event.clientX - this.canvas.offsetLeft ) / this.canvasWidth) * 2 - 1;
+    this.mouse.y = -((event.clientY - this.canvas.offsetTop) / this.canvasHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    if (this.dragging) {
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const intersect = this.raycaster.intersectObject(this.selectedObject)[0];
+      if (intersect) {
+        const position = intersect.point.sub(this.startPosition);
+        this.selectedObject.position.copy(position);
+        
+        this.points[+(this.selectedObject.name.replace('Point_', ''))].text.position.set(position.x + this.textOffset.x, position.y + this.textOffset.y, 0);
+        this.points[+(this.selectedObject.name.replace('Point_', ''))].point = new THREE.Vector2(position.x, position.y);
+        const A = this.geometryService.calculateAngle(this.points[2].point, this.points[1].point, this.points[3].point);
+        const B = this.geometryService.calculateAngle(this.points[1].point, this.points[2].point, this.points[3].point);
+        this.currentBh = 90 - B;
+        const C = 180 - A - B;
+        const Ch = 90 - C;
+        
+        const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
+
+        if (!isVAlidShape) {
+          if (!this.mainObject.visible) {
+            this.mainObject.visible = true;
+          }
+          this.mainObject.geometry = this.createShape();
+        } else {
+          if (this.mainObject.visible) {
+            this.mainObject.visible = false;
+          }
+        }
+      }
+    }
+  };
+
+  onMouseDown(event) {
+    const intersects = this.raycaster.intersectObjects(this.scene.children);
+
+    // change color of the closest object intersecting the raycaster
+    if (intersects.length > 0) {
+      this.selectedObject = intersects[0].object  as THREE.Mesh;
+      if (this.selectedObject && this.selectedObject.name.includes('Point')) {
+        (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+        this.dragging = true;
+        this.startPosition = intersects[0].point.sub(this.selectedObject.position);
+      }
+    }
+  };
+
+  onMouseUp(event) {
+    if (this.selectedObject && this.selectedObject.name.includes('Point')) {
+      (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
+      this.dragging = false;
+      if (this.heightPointMesh) {
+        this.heightPointMesh.geometry = undefined;
+        this.heightPointMesh.material= undefined;
+        this.scene.remove( this.heightPointMesh );
+      }
+    }
   };
 
   onKeyDown(event: KeyboardEvent) {
@@ -275,21 +307,21 @@ export class GenerateLineComponent implements OnInit {
       this.changeLength();
     }
     if(event.key === '5') {
-      const newPoint = this.movePointToMediatingLine(this.points[2].point, this.points[1].point, this.points[3].point);
-      console.log(newPoint);
+      const newPoint = this.geometryService.movePointToMediatingLine(this.points[2].point, this.points[1].point, this.points[3].point);
       
       this.points[2].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[+(this.selectedObject.name.replace('Point_', ''))].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
       
       this.mainObject.geometry = this.createShape();
     }
 
     if (event.key === '8') {
-      const newPoint = this.equalizeEdges(this.points[2].point, this.points[1].point, this.points[3].point);
-      console.log(newPoint);
+      const newPoint = this.geometryService.equalizeEdges(this.points[2].point, this.points[1].point, this.points[3].point);
       
       this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[+(this.selectedObject.name.replace('Point_', ''))].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
       
       this.mainObject.geometry = this.createShape();
     }
@@ -306,11 +338,11 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed) {
       this.value += this.sign * 0.01;
       
-      const newPoint = this.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
-      console.log(newPoint);
+      const newPoint = this.geometryService.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
       
       this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[+(this.selectedObject.name.replace('Point_', ''))].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
 
       this.mainObject.geometry = this.createShape();
       
@@ -323,12 +355,16 @@ export class GenerateLineComponent implements OnInit {
   doubleChangeAngle() {
     if (this.isKeyPressed) {
       this.value += this.sign * 0.01;
-      console.log(-this.value);
       
-      
-      this.points[1].point = this.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
+      let newPoint = this.geometryService.rotateAroundPoint(this.points[2].point, this.points[1].point, this.value);
+      this.points[1].point = newPoint;
+      this.points[1].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[1].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
 
-      this.points[3].point = this.rotateAroundPoint(this.points[2].point, this.points[3].point, -this.value);
+      newPoint = this.geometryService.rotateAroundPoint(this.points[2].point, this.points[3].point, -this.value);
+      this.points[3].point = newPoint
+      this.points[3].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[3].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
 
       this.mainObject.geometry = this.createShape();
       
@@ -342,10 +378,11 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed) {
       this.value += this.sign * 0.01;
       
-      const newPoint = this.addToEdgeLength(this.points[2].point, this.points[1].point, this.value);
+      const newPoint = this.geometryService.addToEdgeLength(this.points[2].point, this.points[1].point, this.value);
       
       this.points[1].point = newPoint;
       this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[+(this.selectedObject.name.replace('Point_', ''))].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
       
       this.mainObject.geometry = this.createShape();
       
@@ -362,126 +399,4 @@ export class GenerateLineComponent implements OnInit {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.canvasWidth, this.canvasHeight);
   }
-
-  doesPolygonHaveIntersectingEdges(points: THREE.Vector2[]) {
-    const numPoints = points.length;
-    for (let i = 0; i < numPoints; i++) {
-        const p1 = points[i];
-        const q1 = points[(i + 1) % numPoints];
-        for (let j = i + 1; j < numPoints; j++) {
-            const p2 = points[j];
-            const q2 = points[(j + 1) % numPoints];
-            if (this.doEdgesIntersect(p1, q1, p2, q2)) {
-                return true;
-            }
-        }
-    }
-    return false;
-  }
-  doEdgesIntersect(p1: THREE.Vector2, q1: THREE.Vector2, p2: THREE.Vector2, q2: THREE.Vector2) {
-    const dx1 = q1.x - p1.x;
-    const dy1 = q1.y - p1.y;
-    const dx2 = q2.x - p2.x;
-    const dy2 = q2.y - p2.y;
-    const cp1 = dx1 * (q2.y - p1.y) - dy1 * (q2.x - p1.x);
-    const cp2 = dx1 * (p2.y - p1.y) - dy1 * (p2.x - p1.x);
-    const cp3 = dx2 * (q1.y - p2.y) - dy2 * (q1.x - p2.x);
-    const cp4 = dx2 * (p1.y - p2.y) - dy2 * (p1.x - p2.x);
-    return (cp1 * cp2 < 0) && (cp3 * cp4 < 0);
-  }
-
-  equalizeEdges(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const length = point1.distanceTo(point3);
-    
-    return this.changeEdgeLength(point1, point2, length);
-  }
-
-  rotateAroundPoint(point1: THREE.Vector2, point2: THREE.Vector2, angle: number) {
-    return point2.clone().sub(point1).rotateAround(new THREE.Vector2(0, 0), angle).add(point1);
-  }
-
-  changeEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, length: number) {
-    return point2.clone().sub(point1).normalize().multiplyScalar(length).add(point1);
-  }
-
-  addToEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, bonusLength: number) {
-    const length = point1.distanceTo(point2) + bonusLength;
-    return this.changeEdgeLength(point1, point2, length);
-  }
-
-  addToAngle(height: number, point1: THREE.Vector2, point2: THREE.Vector2, angle:number) {
-    const length = height / Math.sin(THREE.MathUtils.degToRad(angle));
-    const vector = point2.clone().sub(point1);
-    const newVector = vector.clone().normalize().multiplyScalar(length);
-
-    return point1.clone().add(newVector);
-  }
-
-  movePointToMediatingLine(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const middle = new THREE.Vector2(
-      (point3.x + point2.x) / 2,
-      (point3.y + point2.y) / 2
-    );
-    let length = point1.distanceTo(middle);
-    const vectorC = point2.clone().sub(point3).normalize();
-    const projectionVector = new THREE.Vector2(-vectorC.y, vectorC.x);
-    if(this.isPointAboveEdge(point1, point2, point3) >= 0) {
-      length = -length;
-    }
-    
-    projectionVector.multiplyScalar(length);
-    const point4 = middle.clone().add(projectionVector);
-    return point4;
-  }
-
-  isPointAboveEdge(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const edgeNormal = new THREE.Vector2(-(point3.y - point2.y), point3.x - point2.x).normalize();
-    const pointVector = new THREE.Vector2(point1.x - point2.x, point1.y - point2.y);
-    return pointVector.dot(edgeNormal);
-  }
-
-  calculateAngle(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const vectorA = point2.clone().sub(point1);
-    const vectorB = point3.clone().sub(point1);
-    let angle = Math.atan2(vectorB.y, vectorB.x) - Math.atan2(vectorA.y, vectorA.x);
-    angle = angle < 0 ? angle + 2 * Math.PI : angle; // convert to positive angle if negative
-    angle = angle > Math.PI ? 2 * Math.PI - angle : angle;
-
-    // Convert the angle to degrees
-    const angleInDegrees = THREE.MathUtils.radToDeg(angle);
-    
-    return angleInDegrees;
-  }
-
-  getHeightPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2, height: number) {
-    const vectorC = point2.clone().sub(point3).normalize();
-    const projectionVector = new THREE.Vector2(-vectorC.y, vectorC.x);
-    projectionVector.multiplyScalar(height);
-    const point4 = point1.clone().add(projectionVector);
-
-    if (this.heightPointMesh) {
-      this.heightPointMesh.geometry = undefined;
-      this.heightPointMesh.material= undefined;
-      this.scene.remove( this.heightPointMesh );
-    }
-    //this.heightPointMesh = this.addPoint(point4.x, point4.y, 0, 'extra');
-
-    return point4;
-  }
-
-  getHeight(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const base = point2.distanceTo(point3);
-    const height = (2 * this.getTriangleArea(point1, point2, point3)) / base;
-    
-    return height;
-  }
-
-  
-  getTriangleArea(a: THREE.Vector2, b: THREE.Vector2, c: THREE.Vector2) {
-    const ab = b.clone().sub(a);
-    const ac = c.clone().sub(a);
-    return Math.abs(ab.cross(ac)) / 2;
-  }
-
-  
 }

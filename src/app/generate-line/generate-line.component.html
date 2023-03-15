@@ -1,1 +1,13 @@
-<canvas #canvas id="canvas" class="cube"></canvas>
+<div class="row">
+    <div class="col">
+        <div class="row">
+            <canvas #canvas id="canvas" class="cube"></canvas>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="row" *ngFor="let item of points" >
+            <label>{{item.object?.name}}</label>
+        </div>
+    </div>
+</div>
