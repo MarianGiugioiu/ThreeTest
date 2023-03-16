@@ -4,10 +4,44 @@
             <canvas #canvas id="canvas" class="cube"></canvas>
         </div>
     </div>
-
     <div class="col">
-        <div class="row" *ngFor="let item of points" >
-            <label>{{item.object?.name}}</label>
+        <div class="row">
+            <div class="col  bonus-line-container">
+                <div class="point-container" *ngFor="let item of points; let i = index;" >
+                    <button (click)="selectVertex(i)">{{item.object?.name.replace('Point_', 'P')}}</button>
+                    <div class="col">
+                        <label>{{item.point.x.toFixed(2)}} , {{item.point.y.toFixed(2)}}</label>
+                        <label>{{getAngle(i)}}</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="point-container">
+                    <button (click)="selectEdge(-1)">L{{points.length - 1}}</button>
+                    <div class="col">
+                        <label>{{getEdgeLength(-1).toFixed(3)}}</label>
+                    </div>
+                </div>
+                <div class="point-container" *ngFor="let item of points; let i = index;" >
+                    <button (click)="selectEdge(i)">L{{i}}</button>
+                    <div class="col">
+                        <label>{{getEdgeLength(i).toFixed(3)}}</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div class="row">
+                    <button (click)="addVertex()">Add vertex</button>
+                </div>
+            </div>
+            <div class="col">
+                <div class="row">
+                    <button (click)="removeVertex()">Remove vertex</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

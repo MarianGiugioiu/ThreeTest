@@ -7,7 +7,19 @@
     display: flex;
 }
 
-column {
+.col {
     display: flex;
     flex-direction: column;
+}
+
+.point-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 100px;
+}
+
+.bonus-line-container {
+    margin-top: 50px;
 }

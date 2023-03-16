@@ -119,4 +119,10 @@ export class GeometryService {
     
     return angleInDegrees;
   }
+
+  getDirectionOfRotation(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const vectorA = point2.clone().sub(point1).normalize();
+    const vectorB = point3.clone().sub(point1).normalize();
+    return new THREE.Vector3().crossVectors(new THREE.Vector3(vectorA.x, vectorA.y, 0), new THREE.Vector3(vectorB.x, vectorB.y, 0));
+  }
 }
