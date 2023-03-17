@@ -411,6 +411,20 @@ export class GenerateLineComponent implements OnInit {
       this.value = 0;
       this.changeLength();
     }
+
+    if (event.key === '8') {
+      this.isKeyPressed = true;
+      this.sign = 1;
+      this.value = 0;
+      this.doubleChangeLength();
+    }
+    if (event.key === '9') {
+      this.isKeyPressed = true;
+      this.sign = -1;
+      this.value = 0;
+      this.doubleChangeLength();
+    }
+
     if(event.key === '5') {
       let [i,j,k] = this.getAdjacentPoints();
 
@@ -423,7 +437,7 @@ export class GenerateLineComponent implements OnInit {
       this.mainObject.geometry = this.createShape();
     }
 
-    if (event.key === '8') {
+    if (event.key === '0') {
       let [i,j,k] = this.getAdjacentPoint();
       console.log(i, j, k);
       
@@ -439,7 +453,7 @@ export class GenerateLineComponent implements OnInit {
   }
   
   onKeyUp(event: KeyboardEvent) {
-    if (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4' || event.key === '6' || event.key === '7') {
+    if (event.key === '1' || event.key === '2' || event.key === '3' || event.key === '4' || event.key === '6' || event.key === '7' || event.key === '8' || event.key === '9') {
       this.isKeyPressed = false;
       
     }
@@ -528,6 +542,30 @@ export class GenerateLineComponent implements OnInit {
       
       setTimeout(() => {
         requestAnimationFrame(this.doubleChangeAngle.bind(this));
+      }, 100);
+    }
+  }
+
+  doubleChangeLength() {
+    if (this.isKeyPressed) {
+      this.value += this.sign * 0.01;
+      
+      let [i,j,k] = this.getAdjacentPoints();
+
+      let newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
+      this.points[j].point = newPoint;
+      this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+
+      newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[k].point, this.value);
+      this.points[k].point = newPoint;
+      this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+      this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+      
+      this.mainObject.geometry = this.createShape();
+      
+      setTimeout(() => {
+        requestAnimationFrame(this.doubleChangeLength.bind(this));
       }, 100);
     }
   }
