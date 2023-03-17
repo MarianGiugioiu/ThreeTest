@@ -64,16 +64,20 @@ export class GenerateLineComponent implements OnInit {
   ngOnInit(): void {
     this.points = [
       {
-        point: new THREE.Vector2(-0.5, -0.5)
+        point: new THREE.Vector2(-0.5, -0.5),
+        type: 'line'
       },
       {
-        point: new THREE.Vector2(-0.5, 0.5)
+        point: new THREE.Vector2(-0.5, 0.5),
+        type: 'line'
       },
       {
-        point: new THREE.Vector2(0.5, 0.5)
+        point: new THREE.Vector2(0.5, 0.5),
+        type: 'line'
       },
       {
-        point: new THREE.Vector2(0.5, -0.5)
+        point: new THREE.Vector2(0.5, -0.5),
+        type: 'line'
       }
     ];
   }
@@ -113,7 +117,6 @@ export class GenerateLineComponent implements OnInit {
     this.points.map((item, index) => {
       item.object = this.addPoint(item.point, `Point_${index.toString()}`);
       item.text = this.addText(item.point ,index.toString());
-      item.type = 'line';
     });
     
     this.mouse = new THREE.Vector2();
@@ -137,6 +140,13 @@ export class GenerateLineComponent implements OnInit {
   selectVertex(i) {
     this.selectedObject = this.points[i].object;
     this.selectedAdjacentObject = undefined;
+  }
+
+  toggleVerticesVisibility() {
+    this.points.forEach(item => {
+      item.object.visible = !item.object.visible;
+      item.text.visible = !item.text.visible;
+    })
   }
 
   selectEdge(i) {
@@ -197,21 +207,29 @@ export class GenerateLineComponent implements OnInit {
     return point1.distanceTo(point2);
   }
 
-  addVertex() {
+  addVertex(type = 'line') {
     let i = +(this.selectedObject.name.replace('Point_', ''));
     let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
     const middle = new THREE.Vector2(
       (this.points[i].point.x + this.points[j].point.x) / 2,
       (this.points[i].point.y + this.points[j].point.y) / 2
     );
-
     const listLength = this.points.length;
-    this.points.splice(Math.max(i,j), 0, {
+
+    let newPoint = {
       point: middle,
-      type: 'line',
-      object: this.addPoint(middle, `Point_${listLength.toString()}`),
+      type,
+      object: this.addPoint(middle, `Point_${listLength.toString()}`, type),
       text: this.addText(middle ,listLength.toString()),
-    });
+    }
+
+    if (j === 0) {
+      this.points.push(newPoint)
+    } else {
+      this.points.splice(Math.max(i,j), 0, newPoint);
+    }
+    this.selectedObject = undefined;
+    this.selectedAdjacentObject = undefined;
 
     this.refreshPoints();
   }
@@ -230,11 +248,10 @@ export class GenerateLineComponent implements OnInit {
   refreshPoints() {
     this.points.map((item, index) => {
       item.object.name = `Point_${index.toString()}`;
-      console.log(index.toString());
       item.text.geometry = new TextGeometry(index.toString(), {
         font: this.font,
         size: 0.15,
-        height: 0,
+        height: 2,
         curveSegments: 10,
         bevelEnabled: false
       });
@@ -249,7 +266,17 @@ export class GenerateLineComponent implements OnInit {
 
     // Create a line to each of the other points
     for (let i = 1; i < this.points.length; i++) {
-      shape.lineTo(this.points[i].point.x, this.points[i].point.y);
+      
+      if (this.points[i].type === 'line') {
+        shape.lineTo(this.points[i].point.x, this.points[i].point.y);
+      } else {
+        if (i === this.points.length - 1) {
+          shape.quadraticCurveTo(this.points[i].point.x, this.points[i].point.y, this.points[0].point.x, this.points[0].point.y);
+        } else {
+          shape.quadraticCurveTo(this.points[i].point.x, this.points[i].point.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
+          i++;
+        }
+      }
     }
 
     shape.closePath();
@@ -263,7 +290,7 @@ export class GenerateLineComponent implements OnInit {
     const textGeometry = new TextGeometry(text, {
       font: this.font,
       size: 0.15,
-      height: 0,
+      height: 2,
       curveSegments: 10,
       bevelEnabled: false
     });
@@ -295,19 +322,30 @@ export class GenerateLineComponent implements OnInit {
   }
 
   addPoint(position: THREE.Vector2, name, type = 'line') {
-    const circleGeometry = new THREE.CircleGeometry(0.1, 32);
+    let mesh;
+    if(type === 'line') {
+      const squareGeometry = new THREE.BoxGeometry(0.2, 0.2, 1);
+  
+    // Create a material with white color
+      const squareMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  
+      // Create a mesh from the geometry and material
+      mesh = new THREE.Mesh(squareGeometry, squareMaterial);
+    } else {
+      const circleGeometry = new THREE.CircleGeometry(0.1, 32);
+  
+    // Create a material with white color
+      const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  
+      // Create a mesh from the geometry and material
+      mesh = new THREE.Mesh(circleGeometry, ciclreMaterial);
+    }
 
-  // Create a material with white color
-    const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    mesh.position.set(position.x, position.y, 0);
+    mesh.name = name;
 
-    // Create a mesh from the geometry and material
-    const circle = new THREE.Mesh(circleGeometry, ciclreMaterial);
-
-    circle.position.set(position.x, position.y, 0);
-    circle.name = name;
-
-    this.scene.add(circle);
-    return circle;
+    this.scene.add(mesh);
+    return mesh;
   };
 
   onMouseMove(event) {
@@ -352,6 +390,11 @@ export class GenerateLineComponent implements OnInit {
     // change color of the closest object intersecting the raycaster
     if (intersects.length > 0) {
       this.selectedObject = intersects[0].object  as THREE.Mesh;
+      
+      if (intersects[0].object.name === 'main_object') {
+        this.selectedObject = intersects[1].object  as THREE.Mesh;
+      }
+      
       if (this.selectedObject && this.selectedObject.name.includes('Point')) {
         (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
         this.dragging = true;
@@ -428,27 +471,29 @@ export class GenerateLineComponent implements OnInit {
     if(event.key === '5') {
       let [i,j,k] = this.getAdjacentPoints();
 
-      const newPoint = this.geometryService.movePointToMediatingLine(this.points[i].point, this.points[j].point, this.points[k].point);
-      
-      this.points[i].point = newPoint;
-      this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-      
-      this.mainObject.geometry = this.createShape();
+      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+        const newPoint = this.geometryService.movePointToMediatingLine(this.points[i].point, this.points[j].point, this.points[k].point);
+        
+        this.points[i].point = newPoint;
+        this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        
+        this.mainObject.geometry = this.createShape();
+      }
     }
 
     if (event.key === '0') {
       let [i,j,k] = this.getAdjacentPoint();
-      console.log(i, j, k);
       
-
-      const newPoint = this.geometryService.equalizeEdges(this.points[i].point, this.points[j].point, this.points[k].point);
-      
-      this.points[j].point = newPoint;
-      this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-      
-      this.mainObject.geometry = this.createShape();
+      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+        const newPoint = this.geometryService.equalizeEdges(this.points[i].point, this.points[j].point, this.points[k].point);
+        
+        this.points[j].point = newPoint;
+        this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        
+        this.mainObject.geometry = this.createShape();
+      }
     }
   }
   
@@ -480,7 +525,7 @@ export class GenerateLineComponent implements OnInit {
     let i = +(this.selectedObject.name.replace('Point_', ''));
     let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
     let k;
-    if (j < i || j === this.points.length - 1) {
+    if (j < i || i === this.points.length - 1) {
       k = i + 1;
       if (k === this.points.length) {
         k = 0;
@@ -496,21 +541,21 @@ export class GenerateLineComponent implements OnInit {
   
   changeAngle() {
     if (this.isKeyPressed) {
-      this.value += this.sign * 0.01;
       let [i, j, k] = this.getAdjacentPoint();
-
-      const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
-      const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
-      this.value *= crossProductSign;
-
-      let vertex1 = this.points[+(this.selectedObject.name.replace('Point_', ''))];
-      let vertex2 = this.points[+(this.selectedAdjacentObject.name.replace('Point_', ''))];
-      vertex2.point = this.geometryService.rotateAroundPoint(vertex1.point, vertex2.point, this.value);
-      this.selectedAdjacentObject.position.copy(new THREE.Vector3(vertex2.point.x, vertex2.point.y, 0));
-      vertex2.text.position.set(vertex2.point.x + this.textOffset.x, vertex2.point.y + this.textOffset.y, 0);
-
-      this.mainObject.geometry = this.createShape();
       
+      if (this.points[i].type === 'line' && this.points[j].type === 'line') {
+        this.value += this.sign * 0.01;
+        const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
+        const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
+        this.value *= crossProductSign;
+
+        let newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
+        this.points[j].point = newPoint;
+        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+
+        this.mainObject.geometry = this.createShape();
+      }
       setTimeout(() => {
         requestAnimationFrame(this.changeAngle.bind(this));
       }, 100);
@@ -519,26 +564,26 @@ export class GenerateLineComponent implements OnInit {
 
   doubleChangeAngle() {
     if (this.isKeyPressed) {
-      this.value += this.sign * 0.01;
-
       let [i,j,k] = this.getAdjacentPoints();
-
-      const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
-      const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
-      this.value *= crossProductSign;
       
-      
-      let newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
-      this.points[j].point = newPoint;
-      this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+        this.value += this.sign * 0.01;
+        const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
+        const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
+        this.value *= crossProductSign;
 
-      newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[k].point, -this.value);
-      this.points[k].point = newPoint
-      this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-
-      this.mainObject.geometry = this.createShape();
+        let newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
+        this.points[j].point = newPoint;
+        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+  
+        newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[k].point, -this.value);
+        this.points[k].point = newPoint
+        this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+  
+        this.mainObject.geometry = this.createShape();
+      }
       
       setTimeout(() => {
         requestAnimationFrame(this.doubleChangeAngle.bind(this));
@@ -548,21 +593,22 @@ export class GenerateLineComponent implements OnInit {
 
   doubleChangeLength() {
     if (this.isKeyPressed) {
-      this.value += this.sign * 0.01;
-      
       let [i,j,k] = this.getAdjacentPoints();
-
-      let newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
-      this.points[j].point = newPoint;
-      this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-
-      newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[k].point, this.value);
-      this.points[k].point = newPoint;
-      this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
       
-      this.mainObject.geometry = this.createShape();
+      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+        this.value += this.sign * 0.01;
+        let newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
+        this.points[j].point = newPoint;
+        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+
+        newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[k].point, this.value);
+        this.points[k].point = newPoint;
+        this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        
+        this.mainObject.geometry = this.createShape();
+      }
       
       setTimeout(() => {
         requestAnimationFrame(this.doubleChangeLength.bind(this));
@@ -577,13 +623,15 @@ export class GenerateLineComponent implements OnInit {
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
 
-      const newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
-      
-      this.points[j].point = newPoint;
-      this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-      
-      this.mainObject.geometry = this.createShape();
+      if (this.points[i].type === 'line' && this.points[j].type === 'line') {
+        const newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
+        
+        this.points[j].point = newPoint;
+        this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        
+        this.mainObject.geometry = this.createShape();
+      }
       
       setTimeout(() => {
         requestAnimationFrame(this.changeLength.bind(this));

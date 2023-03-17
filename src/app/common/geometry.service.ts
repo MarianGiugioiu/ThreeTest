@@ -73,7 +73,10 @@ export class GeometryService {
 
   addToEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, bonusLength: number) {
     const length = point1.distanceTo(point2) + bonusLength;
-    return this.changeEdgeLength(point1, point2, length);
+    if (!(bonusLength < 0 && Math.abs(bonusLength) >= length)) {
+      return this.changeEdgeLength(point1, point2, length);
+    }
+    return point2;
   }
 
   addToAngle(height: number, point1: THREE.Vector2, point2: THREE.Vector2, angle:number) {

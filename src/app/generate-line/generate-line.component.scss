@@ -3,6 +3,11 @@
 //     height: 50vh;
 // }
 
+.page-container {
+    height: 100%;
+    width: 100%;
+}
+
 .row {
     display: flex;
 }
@@ -10,6 +15,12 @@
 .col {
     display: flex;
     flex-direction: column;
+}
+
+.options-container {
+    padding-top: 30px;
+    padding-bottom: 30px;
+    overflow-y: auto;
 }
 
 .point-container {

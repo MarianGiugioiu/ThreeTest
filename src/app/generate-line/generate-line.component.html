@@ -1,10 +1,13 @@
-<div class="row">
+<div class="row page-container">
     <div class="col">
         <div class="row">
             <canvas #canvas id="canvas" class="cube"></canvas>
         </div>
     </div>
-    <div class="col">
+    <div class="col options-container">
+        <div class="row">
+            <button (click)="toggleVerticesVisibility()">Hide vertices</button>
+        </div>
         <div class="row">
             <div class="col  bonus-line-container">
                 <div class="point-container" *ngFor="let item of points; let i = index;" >
@@ -35,6 +38,11 @@
             <div class="col">
                 <div class="row">
                     <button (click)="addVertex()">Add vertex</button>
+                </div>
+            </div>
+            <div class="col">
+                <div class="row">
+                    <button (click)="addVertex('curve')">Add curve point</button>
                 </div>
             </div>
             <div class="col">
