@@ -545,16 +545,19 @@ export class GenerateLineComponent implements OnInit {
       
       if (this.points[i].type === 'line' && this.points[j].type === 'line') {
         this.value += this.sign * 0.01;
-        const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
-        const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
+        const crossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
         this.value *= crossProductSign;
 
-        let newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
-        this.points[j].point = newPoint;
-        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        const newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
+        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, newPoint, this.points[k].point);
 
-        this.mainObject.geometry = this.createShape();
+        if (newCrossProductSign === crossProductSign) {
+          this.points[j].point = newPoint;
+          this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+          this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+  
+          this.mainObject.geometry = this.createShape();
+        }
       }
       setTimeout(() => {
         requestAnimationFrame(this.changeAngle.bind(this));
@@ -568,21 +571,31 @@ export class GenerateLineComponent implements OnInit {
       
       if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
         this.value += this.sign * 0.01;
-        const crossProduct = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
-        const crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
-        this.value *= crossProductSign;
+        const crossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
+        
+        console.log(crossProductSign);
+        if (crossProductSign !== 0) {
+          this.value *= crossProductSign;
+        }
 
-        let newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
-        this.points[j].point = newPoint;
-        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        const newPointJ = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
+        const newPointK = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[k].point, -this.value);
+        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, newPointJ, newPointK);
+
+        console.log(newCrossProductSign);
+        
+
+        if (crossProductSign === 0 || newCrossProductSign === crossProductSign) {
+          this.points[j].point = newPointJ;
+          this.points[j].object.position.copy(new THREE.Vector3(newPointJ.x, newPointJ.y, 0));
+          this.points[j].text.position.set(newPointJ.x + this.textOffset.x, newPointJ.y + this.textOffset.y, 0);
   
-        newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[k].point, -this.value);
-        this.points[k].point = newPoint
-        this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-  
-        this.mainObject.geometry = this.createShape();
+          this.points[k].point = newPointK
+          this.points[k].object.position.copy(new THREE.Vector3(newPointK.x, newPointK.y, 0));
+          this.points[k].text.position.set(newPointK.x + this.textOffset.x, newPointK.y + this.textOffset.y, 0);
+    
+          this.mainObject.geometry = this.createShape();
+        }
       }
       
       setTimeout(() => {
