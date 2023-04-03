@@ -9,9 +9,12 @@
             <button (click)="toggleVerticesVisibility()">Hide vertices</button>
         </div>
         <div class="row">
+            <button (click)="test()">test</button>
+        </div>
+        <div class="row">
             <div class="col  bonus-line-container">
                 <div class="point-container" *ngFor="let item of points; let i = index;" >
-                    <button (click)="selectVertex(i)">{{item.object?.name.replace('Point_', 'P')}}</button>
+                    <button [ngClass]="item.object?.name === selectedObject?.name ? 'button-red' : ''" (click)="selectVertex(i)">{{item.object?.name.replace('Point_', 'P')}}</button>
                     <div class="col">
                         <label>{{item.point.x.toFixed(2)}} , {{item.point.y.toFixed(2)}}</label>
                         <label>{{getAngle(i)}}</label>
@@ -20,16 +23,24 @@
             </div>
 
             <div class="col">
-                <div class="point-container">
-                    <button (click)="selectEdge(-1)">L{{points.length - 1}}</button>
+                <div *ngIf="displayLine(-1)" class="point-container">
+                    <button [ngClass]="isEdgeSelected(-1) ? 'button-red' : ''" (click)="selectEdge(-1)">L{{points.length - 1}}</button>
                     <div class="col">
                         <label>{{getEdgeLength(-1).toFixed(3)}}</label>
                     </div>
                 </div>
-                <div class="point-container" *ngFor="let item of points; let i = index;" >
-                    <button (click)="selectEdge(i)">L{{i}}</button>
-                    <div class="col">
-                        <label>{{getEdgeLength(i).toFixed(3)}}</label>
+                <div *ngIf="!displayLine(-1)"  class="point-container">
+                    <label>nimic</label>
+                </div>
+                <div *ngFor="let item of points; let i = index;" >
+                    <div *ngIf="displayLine(i)"  class="point-container">
+                        <button [ngClass]="isEdgeSelected(i) ? 'button-red' : ''" (click)="selectEdge(i)">L{{i}}</button>
+                        <div class="col">
+                            <label>{{getEdgeLength(i).toFixed(3)}}</label>
+                        </div>
+                    </div>
+                    <div *ngIf="!displayLine(i)"  class="point-container">
+                        <label>nimic</label>
                     </div>
                 </div>
             </div>
