@@ -12,6 +12,7 @@ import { ProcmapComponent } from './procmap/procmap.component';
 import { RaycastingComponent } from './raycasting/raycasting.component';
 import { ShadersComponent } from './shaders/shaders.component';
 import { WebglComponent } from './webgltest/webgl.component';
+import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -28,7 +29,8 @@ import { WebglComponent } from './webgltest/webgl.component';
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule
+    AppRoutingModule,
+    FormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

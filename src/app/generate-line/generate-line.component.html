@@ -15,31 +15,35 @@
             <div class="col  bonus-line-container">
                 <div class="point-container" *ngFor="let item of points; let i = index;" >
                     <button [ngClass]="item.object?.name === selectedObject?.name ? 'button-red' : ''" (click)="selectVertex(i)">{{item.object?.name.replace('Point_', 'P')}}</button>
-                    <div class="col">
-                        <label>{{item.point.x.toFixed(2)}} , {{item.point.y.toFixed(2)}}</label>
+                    <div class="col point-details-container">
+                        <div class="row">
+                            <input class="point-pos-input" [ngModel]="item.point.x.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'x', item)">
+                            , 
+                            <input class="point-pos-input" [ngModel]="item.point.y.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'y', item)">
+                        </div>
                         <label>{{getAngle(i)}}</label>
                     </div>
                 </div>
             </div>
 
             <div class="col">
-                <div *ngIf="displayLine(-1)" class="point-container">
-                    <button [ngClass]="isEdgeSelected(-1) ? 'button-red' : ''" (click)="selectEdge(-1)">L{{points.length - 1}}</button>
+                <div *ngIf="displayLine(-1)" class="line-container">
+                    <button [ngClass]="isEdgeSelected(-1) ? 'button-red' : ''" (click)="selectEdge(-1)">L{{points.length - 1}}-0</button>
                     <div class="col">
-                        <label>{{getEdgeLength(-1).toFixed(3)}}</label>
+                        <input class="line-length-input" [disabled]="!(selectedObject && selectedAdjacentObject && isEdgeSelected(-1))" [ngModel]="getEdgeLength(-1).toFixed(3)" type="number" (keyup.enter)="updateLength($event)">
                     </div>
                 </div>
-                <div *ngIf="!displayLine(-1)"  class="point-container">
+                <div *ngIf="!displayLine(-1)"  class="line-container">
                     <label>nimic</label>
                 </div>
                 <div *ngFor="let item of points; let i = index;" >
-                    <div *ngIf="displayLine(i)"  class="point-container">
-                        <button [ngClass]="isEdgeSelected(i) ? 'button-red' : ''" (click)="selectEdge(i)">L{{i}}</button>
+                    <div *ngIf="displayLine(i)"  class="line-container">
+                        <button [ngClass]="isEdgeSelected(i) ? 'button-red' : ''" (click)="selectEdge(i)">L{{i}}-{{i + 1 === points.length ? 0 : i + 1}}</button>
                         <div class="col">
-                            <label>{{getEdgeLength(i).toFixed(3)}}</label>
+                            <input class="line-length-input" [disabled]="!(selectedObject && selectedAdjacentObject && isEdgeSelected(i))" [ngModel]="getEdgeLength(i).toFixed(3)" type="number" (keyup.enter)="updateLength($event)">
                         </div>
                     </div>
-                    <div *ngIf="!displayLine(i)"  class="point-container">
+                    <div *ngIf="!displayLine(i)"  class="line-container">
                         <label>nimic</label>
                     </div>
                 </div>

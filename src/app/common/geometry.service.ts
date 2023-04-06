@@ -68,6 +68,10 @@ export class GeometryService {
   }
 
   changeEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, length: number) {
+    console.log(length);
+    
+    console.log(point2.clone().sub(point1).normalize());
+    
     return point2.clone().sub(point1).normalize().multiplyScalar(length).add(point1);
   }
 
@@ -85,6 +89,23 @@ export class GeometryService {
     const newVector = vector.clone().normalize().multiplyScalar(length);
 
     return point1.clone().add(newVector);
+  }
+
+  getMidPoint(point1: THREE.Vector2, point2: THREE.Vector2) {
+    return point1.clone().add(point2).multiplyScalar(0.5);
+  }
+
+  getMedianVector(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const midpoint = this.getMidPoint(point2, point3);
+    return point1.clone().sub(midpoint);
+  }
+
+  getCurveControlPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
+    const midPoint = this.getMidPoint(point2, point3);
+    const medianVector = this.getMedianVector(point1, point2, point3).multiplyScalar(1);
+    medianVector.y -= 0.25;
+    const controlPoint = midPoint.clone().add(medianVector);
+    return controlPoint;
   }
 
   movePointToMediatingLine(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
