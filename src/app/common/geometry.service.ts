@@ -101,11 +101,7 @@ export class GeometryService {
   }
 
   getCurveControlPoint(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
-    const midPoint = this.getMidPoint(point2, point3);
-    const medianVector = this.getMedianVector(point1, point2, point3).multiplyScalar(1);
-    medianVector.y -= 0.25;
-    const controlPoint = midPoint.clone().add(medianVector);
-    return controlPoint;
+    return new THREE.Vector2(2 * point1.x - (point2.x + point3.x)/ 2, 2 * point1.y - (point2.y + point3.y)/ 2)
   }
 
   movePointToMediatingLine(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {

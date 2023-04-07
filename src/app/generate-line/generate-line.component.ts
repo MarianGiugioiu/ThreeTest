@@ -39,11 +39,11 @@ export class GenerateLineComponent implements OnInit {
   private font;
   private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
+  public vertexVisibility = true;
 
   currentHeight;
   currentBh;
   mainObject: THREE.Mesh;
-  heightPointMesh: THREE.Mesh;
   heightPoint: THREE.Vector2;
 
   points: IPoint[];
@@ -144,6 +144,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   toggleVerticesVisibility() {
+    this.vertexVisibility = !this.vertexVisibility;
     this.points.forEach(item => {
       item.object.visible = !item.object.visible;
       item.text.visible = !item.text.visible;
@@ -297,6 +298,7 @@ export class GenerateLineComponent implements OnInit {
 
   createShape() {
     const shape = new THREE.Shape();
+    const lastPos = this.points.length - 1;
 
     // Move the path to the first point
     shape.moveTo(this.points[0].point.x, this.points[0].point.y);
@@ -307,15 +309,18 @@ export class GenerateLineComponent implements OnInit {
       if (this.points[i].type === 'line') {
         shape.lineTo(this.points[i].point.x, this.points[i].point.y);
       } else {
-        if (i === this.points.length - 1) {
-          shape.quadraticCurveTo(this.points[i].point.x, this.points[i].point.y, this.points[0].point.x, this.points[0].point.y);
+        let cp;
+        if (i === lastPos) {
+          cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[0].point.x, this.points[0].point.y));
+          shape.quadraticCurveTo(cp.x, cp.y, this.points[0].point.x, this.points[0].point.y);
         } else {
+          let cp;
           if (i > 0) {
-            const cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y)).multiplyScalar(2);
-            // console.log(medianVector);
-            shape.quadraticCurveTo(cp.x, cp.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
+            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y));
+          } else {
+            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[lastPos].point.x, this.points[lastPos].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y));
           }
-          // shape.quadraticCurveTo(this.points[i].point.x, this.points[i].point.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
+          shape.quadraticCurveTo(cp.x, cp.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
           i++;
         }
       }
@@ -469,7 +474,7 @@ export class GenerateLineComponent implements OnInit {
     if (intersects.length > 0) {
       this.selectedObject = intersects[0].object  as THREE.Mesh;
       
-      if (intersects[0].object.name === 'main_object') {
+      if (intersects[0].object.name === 'main_object' && intersects[1] && this.vertexVisibility) {
         this.selectedObject = intersects[1].object  as THREE.Mesh;
       }
       
@@ -485,11 +490,8 @@ export class GenerateLineComponent implements OnInit {
     if (this.selectedObject && this.selectedObject.name.includes('Point')) {
       (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
       this.dragging = false;
-      if (this.heightPointMesh) {
-        this.heightPointMesh.geometry = undefined;
-        this.heightPointMesh.material= undefined;
-        this.scene.remove( this.heightPointMesh );
-      }
+      this.selectedObject = undefined;
+      this.selectedAdjacentObject = undefined;
     }
   };
 
