@@ -40,6 +40,7 @@ export class GenerateLineComponent implements OnInit {
   private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
   public vertexVisibility = true;
+  public mainObjectRotation = Math.PI / 45;
 
   currentHeight;
   currentBh;
@@ -100,8 +101,9 @@ export class GenerateLineComponent implements OnInit {
       1000 // far
     );
     this.camera.position.set(0, 0, 10);
-    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    // this.controls.update();
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableRotate = false;
+    this.controls.update();
 
 
     this.textureLoader = new THREE.TextureLoader();
@@ -136,6 +138,17 @@ export class GenerateLineComponent implements OnInit {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
+  }
+
+  rotateMainObject(sign) {
+    const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
+    this.mainObject.geometry.applyMatrix4(rotationMatrix);
+    
+    this.points.map((item, index) => {
+      item.object.position.applyMatrix4(rotationMatrix);
+      this.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+      item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
+    });
   }
 
   selectVertex(i) {
@@ -506,6 +519,16 @@ export class GenerateLineComponent implements OnInit {
   onKeyDown(event: KeyboardEvent) {
     if (!this.pressedKeys.includes(event.key)) {
       this.pressedKeys.push(event.key);
+    }
+
+    if (this.pressedKeys.includes('Shift') && this.pressedKeys.includes('+')) {
+      this.isKeyPressed = true;
+      this.rotateMainObject(1);
+    }
+
+    if (this.pressedKeys.includes('Shift') && this.pressedKeys.includes('-')) {
+      this.isKeyPressed = true;
+      this.rotateMainObject(-1);
     }
     
     if (this.pressedKeys.includes('[') && this.pressedKeys.includes('+')) {
