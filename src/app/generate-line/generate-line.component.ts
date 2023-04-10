@@ -41,6 +41,7 @@ export class GenerateLineComponent implements OnInit {
   public pressedKeys = [];
   public vertexVisibility = true;
   public mainObjectRotation = Math.PI / 45;
+  public regularPolygonEdgesNumber: number = 4;
 
   currentHeight;
   currentBh;
@@ -115,12 +116,7 @@ export class GenerateLineComponent implements OnInit {
 
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
 
-    this.drawMainObject();
-    
-    this.points.map((item, index) => {
-      item.object = this.addPoint(item.point, `Point_${index.toString()}`);
-      item.text = this.addText(item.point ,index.toString());
-    });
+    this.createPrimaryShape();
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -149,6 +145,66 @@ export class GenerateLineComponent implements OnInit {
       this.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
       item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
     });
+  }
+
+  rotateMainObjectWithValue(value) {
+    const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
+    this.mainObject.geometry.applyMatrix4(rotationMatrix);
+    
+    this.points.map((item, index) => {
+      item.object.position.applyMatrix4(rotationMatrix);
+      this.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+      item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
+    });
+  }
+
+  destroyShape() {
+    this.points.forEach(item => {
+      this.scene.remove(item.object);
+      this.scene.remove(item.text);
+    });
+    this.scene.remove(this.mainObject);
+  }
+
+  createPrimaryShape() {
+    this.drawMainObject();
+    
+    this.points.map((item, index) => {
+      item.object = this.addPoint(item.point, `Point_${index.toString()}`);
+      item.text = this.addText(item.point ,index.toString());
+    });
+  }
+
+  refreshShape() {
+    this.regularPolygonEdgesNumber = 4;
+    this.createRegularPolygon();
+  }
+
+  createRegularPolygon() {
+    if (this.regularPolygonEdgesNumber && !isNaN(this.regularPolygonEdgesNumber) && this.regularPolygonEdgesNumber >= 3) {
+      const radius = Math.sqrt(2) / 2;
+      const n = this.regularPolygonEdgesNumber;
+      const angle = (2 * Math.PI) / n;
+      const vertices = [];
+
+      for (let i = 0; i < n; i++) {
+        const x = -radius * Math.cos(i * angle);
+        const y = radius * Math.sin(i * angle);
+        const vertex = new THREE.Vector2(x, y);
+        vertices.push(vertex);
+      }
+      console.log(vertices);
+      this.destroyShape();
+      this.points = [];
+      vertices.forEach(item => {
+        this.points.push({
+          point: item,
+          type: 'line'
+        })
+      });
+      this.createPrimaryShape();
+      this.rotateMainObjectWithValue(Math.PI / 4);
+    }
   }
 
   selectVertex(i) {
@@ -182,11 +238,6 @@ export class GenerateLineComponent implements OnInit {
         }
       }
     }
-  }
-
-  test() {
-    console.log(this.selectedObject.name);
-    console.log(this.selectedAdjacentObject.name);
   }
 
   isEdgeSelected(i) {
@@ -313,10 +364,8 @@ export class GenerateLineComponent implements OnInit {
     const shape = new THREE.Shape();
     const lastPos = this.points.length - 1;
 
-    // Move the path to the first point
     shape.moveTo(this.points[0].point.x, this.points[0].point.y);
 
-    // Create a line to each of the other points
     for (let i = 1; i < this.points.length; i++) {
       
       if (this.points[i].type === 'line') {

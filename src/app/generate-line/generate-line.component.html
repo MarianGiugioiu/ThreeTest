@@ -9,7 +9,11 @@
             <button (click)="toggleVerticesVisibility()">Hide vertices</button>
         </div>
         <div class="row">
-            <button (click)="test()">test</button>
+            <button (click)="refreshShape()">Refresh shape</button>
+        </div>
+        <div class="row">
+            <input class="point-pos-input" [(ngModel)]="regularPolygonEdgesNumber" type="number">
+            <button (click)="createRegularPolygon()">Create regular polygon</button>
         </div>
         <div class="row">
             <div class="col  bonus-line-container">
