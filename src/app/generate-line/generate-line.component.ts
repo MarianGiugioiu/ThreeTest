@@ -28,8 +28,8 @@ export class GenerateLineComponent implements OnInit {
   private camera: THREE.OrthographicCamera;
   private controls: OrbitControls;
   private ambientLight: THREE.AmbientLight;
-  private canvasWidth = 600;
-  private canvasHeight = 600;
+  private canvasWidth = 300;
+  private canvasHeight = 300;
   private dragging = false;
   public selectedObject: THREE.Mesh;
   public selectedAdjacentObject: THREE.Mesh;
@@ -42,6 +42,7 @@ export class GenerateLineComponent implements OnInit {
   public vertexVisibility = true;
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
+  public isCanvasExpanded = false;
 
   currentHeight;
   currentBh;
@@ -136,6 +137,23 @@ export class GenerateLineComponent implements OnInit {
     window.addEventListener('resize', () => this.onWindowResize(), false);
   }
 
+  toggleExpand() {
+    this.isCanvasExpanded = !this.isCanvasExpanded;
+    this.toggleVerticesVisibility(!this.isCanvasExpanded);
+    if (this.isCanvasExpanded) {
+      this.canvasWidth = 150;
+      this.canvasHeight = 150;
+    } else {
+      this.canvasWidth = 300;
+      this.canvasHeight = 300;
+    }
+    this.canvas.width = this.canvasWidth;
+    this.canvas.height = this.canvasHeight;
+    this.renderer.setSize(this.canvasWidth, this.canvasHeight);
+    this.selectedObject = undefined;
+    this.selectedAdjacentObject = undefined;
+  }
+
   rotateMainObject(sign) {
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
@@ -193,7 +211,6 @@ export class GenerateLineComponent implements OnInit {
         const vertex = new THREE.Vector2(x, y);
         vertices.push(vertex);
       }
-      console.log(vertices);
       this.destroyShape();
       this.points = [];
       vertices.forEach(item => {
@@ -212,11 +229,11 @@ export class GenerateLineComponent implements OnInit {
     this.selectedAdjacentObject = undefined;
   }
 
-  toggleVerticesVisibility() {
-    this.vertexVisibility = !this.vertexVisibility;
+  toggleVerticesVisibility(value?) {
+    this.vertexVisibility = value !== undefined ? value: !this.vertexVisibility;
     this.points.forEach(item => {
-      item.object.visible = !item.object.visible;
-      item.text.visible = !item.text.visible;
+      item.object.visible = this.vertexVisibility ;
+      item.text.visible = this.vertexVisibility ;
     })
   }
 
@@ -356,10 +373,6 @@ export class GenerateLineComponent implements OnInit {
     });
   }
 
-  calculateCurveParameters() {
-
-  }
-
   createShape() {
     const shape = new THREE.Shape();
     const lastPos = this.points.length - 1;
@@ -478,7 +491,7 @@ export class GenerateLineComponent implements OnInit {
 
   updateLength(event) {
     const value = event.target.value;
-    if (value && !isNaN(value) && value !== 0) {
+    if (value && !isNaN(value) && value > 0) {
       
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
@@ -566,7 +579,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (!this.pressedKeys.includes(event.key)) {
+    if (!this.pressedKeys.includes(event.key) && !this.isCanvasExpanded) {
       this.pressedKeys.push(event.key);
     }
 

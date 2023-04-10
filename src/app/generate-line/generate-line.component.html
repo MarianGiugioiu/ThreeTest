@@ -1,30 +1,47 @@
+<button (click)="toggleExpand()">Toggle expand</button>
 <div class="row page-container">
     <div class="col">
         <div class="row">
             <canvas #canvas id="canvas" class="cube"></canvas>
         </div>
+        <div *ngIf="!isCanvasExpanded" >
+            <div class="row action-container">
+                <button (click)="refreshShape()">Refresh shape</button>
+            </div>
+            <div class="row action-container">
+                <input class="point-pos-input" [(ngModel)]="regularPolygonEdgesNumber" type="number">
+                <button (click)="createRegularPolygon()">Create regular polygon</button>
+            </div>
+            <div class="row action-container">
+                <button (click)="toggleVerticesVisibility()">Hide vertices</button>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="row action-container">
+                        <button (click)="addVertex()">Add vertex</button>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="row action-container">
+                        <button (click)="addVertex('curve')">Add curve point</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row action-container">
+                <button (click)="removeVertex()">Remove vertex</button>
+            </div>
+        </div>
     </div>
-    <div class="col options-container">
-        <div class="row">
-            <button (click)="toggleVerticesVisibility()">Hide vertices</button>
-        </div>
-        <div class="row">
-            <button (click)="refreshShape()">Refresh shape</button>
-        </div>
-        <div class="row">
-            <input class="point-pos-input" [(ngModel)]="regularPolygonEdgesNumber" type="number">
-            <button (click)="createRegularPolygon()">Create regular polygon</button>
-        </div>
+    
+    <div class="col options-container" *ngIf="!isCanvasExpanded">
         <div class="row">
             <div class="col  bonus-line-container">
                 <div class="point-container" *ngFor="let item of points; let i = index;" >
                     <button [ngClass]="item.object?.name === selectedObject?.name ? 'button-red' : ''" (click)="selectVertex(i)">{{item.object?.name.replace('Point_', 'P')}}</button>
                     <div class="col point-details-container">
-                        <div class="row">
-                            <input class="point-pos-input" [ngModel]="item.point.x.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'x', item)">
-                            , 
-                            <input class="point-pos-input" [ngModel]="item.point.y.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'y', item)">
-                        </div>
+                        <input class="point-pos-input" [ngModel]="item.point.x.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'x', item)">
+                        
+                        <input class="point-pos-input" [ngModel]="item.point.y.toFixed(2)" type="number" (keyup.enter)="updatePoint($event, 'y', item)">
                         <label>{{getAngle(i)}}</label>
                     </div>
                 </div>
@@ -50,23 +67,6 @@
                     <div *ngIf="!displayLine(i)"  class="line-container">
                         <label>nimic</label>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col">
-                <div class="row">
-                    <button (click)="addVertex()">Add vertex</button>
-                </div>
-            </div>
-            <div class="col">
-                <div class="row">
-                    <button (click)="addVertex('curve')">Add curve point</button>
-                </div>
-            </div>
-            <div class="col">
-                <div class="row">
-                    <button (click)="removeVertex()">Remove vertex</button>
                 </div>
             </div>
         </div>

@@ -68,10 +68,6 @@ export class GeometryService {
   }
 
   changeEdgeLength(point1: THREE.Vector2, point2: THREE.Vector2, length: number) {
-    console.log(length);
-    
-    console.log(point2.clone().sub(point1).normalize());
-    
     return point2.clone().sub(point1).normalize().multiplyScalar(length).add(point1);
   }
 
