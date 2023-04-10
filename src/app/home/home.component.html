@@ -1,0 +1,9 @@
+<div class="row page-container">
+    <app-generate-line class=""></app-generate-line>
+    <div class="col shape-list-container">
+        <!-- <app-generate-line class="shape-container" [name]="'1. Nume'"></app-generate-line>
+        <app-generate-line class="shape-container"></app-generate-line>
+        <app-generate-line class="shape-container"></app-generate-line> -->
+        <app-generate-line class="shape-container" *ngFor="let shape of shapes"  ></app-generate-line>
+    </div>
+</div>

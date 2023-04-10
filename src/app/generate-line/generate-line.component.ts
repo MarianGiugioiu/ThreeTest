@@ -1,11 +1,12 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { GeometryService } from '../common/geometry.service';
 
-interface IPoint {
+export interface IPoint {
+  name?: string;
   point?: THREE.Vector2;
   type?: string;
   object?: THREE.Mesh;
@@ -22,6 +23,8 @@ export class GenerateLineComponent implements OnInit {
   private get canvas(): HTMLCanvasElement {
     return this.canvasRef.nativeElement;
   }
+
+  // @Input() shape: string;
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -124,7 +127,7 @@ export class GenerateLineComponent implements OnInit {
     
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
-      //this.controls.update();
+      this.controls.update();
     });
     
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
@@ -374,20 +377,20 @@ export class GenerateLineComponent implements OnInit {
   }
 
   createShape() {
-    const shape = new THREE.Shape();
+    const shapeGeometry = new THREE.Shape();
     const lastPos = this.points.length - 1;
 
-    shape.moveTo(this.points[0].point.x, this.points[0].point.y);
+    shapeGeometry.moveTo(this.points[0].point.x, this.points[0].point.y);
 
     for (let i = 1; i < this.points.length; i++) {
       
       if (this.points[i].type === 'line') {
-        shape.lineTo(this.points[i].point.x, this.points[i].point.y);
+        shapeGeometry.lineTo(this.points[i].point.x, this.points[i].point.y);
       } else {
         let cp;
         if (i === lastPos) {
           cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[0].point.x, this.points[0].point.y));
-          shape.quadraticCurveTo(cp.x, cp.y, this.points[0].point.x, this.points[0].point.y);
+          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.points[0].point.x, this.points[0].point.y);
         } else {
           let cp;
           if (i > 0) {
@@ -395,16 +398,16 @@ export class GenerateLineComponent implements OnInit {
           } else {
             cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[lastPos].point.x, this.points[lastPos].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y));
           }
-          shape.quadraticCurveTo(cp.x, cp.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
+          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
           i++;
         }
       }
     }
 
-    shape.closePath();
+    shapeGeometry.closePath();
     
     // Create a geometry from the shape
-    return new THREE.ShapeGeometry(shape);
+    return new THREE.ShapeGeometry(shapeGeometry);
   }
 
   addText(position: THREE.Vector2, text: string) {
@@ -543,20 +546,26 @@ export class GenerateLineComponent implements OnInit {
   };
 
   onMouseDown(event) {
-    const intersects = this.raycaster.intersectObjects(this.scene.children);
-    
-    // change color of the closest object intersecting the raycaster
-    if (intersects.length > 0) {
-      this.selectedObject = intersects[0].object  as THREE.Mesh;
-      
-      if (intersects[0].object.name === 'main_object' && intersects[1] && this.vertexVisibility) {
-        this.selectedObject = intersects[1].object  as THREE.Mesh;
-      }
-      
-      if (this.selectedObject && this.selectedObject.name.includes('Point')) {
-        (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
-        this.dragging = true;
-        this.startPosition = intersects[0].point.sub(this.selectedObject.position);
+    if (this.isCanvasExpanded) {
+      this.toggleExpand();
+    } else {
+      if (this.vertexVisibility) {
+        const intersects = this.raycaster.intersectObjects(this.scene.children);
+        
+        // change color of the closest object intersecting the raycaster
+        if (intersects.length > 0) {
+          this.selectedObject = intersects[0].object  as THREE.Mesh;
+          
+          if (intersects[0].object.name === 'main_object' && intersects[1] && this.vertexVisibility) {
+            this.selectedObject = intersects[1].object  as THREE.Mesh;
+          }
+          
+          if (this.selectedObject && this.selectedObject.name.includes('Point')) {
+            (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+            this.dragging = true;
+            this.startPosition = intersects[0].point.sub(this.selectedObject.position);
+          }
+        }
       }
     }
   };
