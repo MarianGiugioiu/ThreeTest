@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IPoint } from '../generate-line/generate-line.component';
+import { IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
 
 @Component({
@@ -8,35 +8,74 @@ import * as THREE from 'three';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-  public shapes: IPoint[][];
+  public shapes: IShape[] = [];
+  public surface: IShape;
+  public expandedShapeDetails: IShape;
 
   constructor() { }
 
   ngOnInit(): void {
-    this.shapes = [];
-    this.addNewShape();
-    this.addNewShape();
-    this.addNewShape();
+    this.createSurface();
   }
 
   addNewShape() {
-    this.shapes.push([
+    this.shapes.unshift(
       {
-        point: new THREE.Vector2(-0.5, -0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(-0.5, 0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(0.5, 0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(0.5, -0.5),
-        type: 'line'
+        id: this.shapes.length + 1,
+        name: 'asd',
+        points:[
+          {
+            point: new THREE.Vector2(-0.5, -0.5),
+            type: 'line'
+          },
+          {
+            point: new THREE.Vector2(-0.5, 0.5),
+            type: 'line'
+          },
+          {
+            point: new THREE.Vector2(0.5, 0.5),
+            type: 'line'
+          },
+          {
+            point: new THREE.Vector2(0.5, -0.5),
+            type: 'line'
+          }
+        ]
       }
-    ]);
+    );
+    this.expandedShapeDetails = this.shapes[0];
+  }
+
+  createSurface() {
+    this.surface = {
+      id: 0,
+      name: 'Surface',
+      points:[
+        {
+          point: new THREE.Vector2(-0.5, -0.5),
+          type: 'line'
+        },
+        {
+          point: new THREE.Vector2(-0.5, 0.5),
+          type: 'line'
+        },
+        {
+          point: new THREE.Vector2(0.5, 0.5),
+          type: 'line'
+        },
+        {
+          point: new THREE.Vector2(0.5, -0.5),
+          type: 'line'
+        }
+      ]
+    }
+  }
+
+  updateShapeMinimization(event, shape: IShape) {
+    if (event === true) {
+      this.expandedShapeDetails = undefined;
+    } else {
+      this.expandedShapeDetails = shape;
+    }
   }
 }

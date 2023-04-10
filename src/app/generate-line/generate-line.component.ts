@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, OnInit, Output, ViewChild, EventEmitter, SimpleChanges } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
@@ -13,6 +13,12 @@ export interface IPoint {
   text?: THREE.Mesh;
 }
 
+export interface IShape {
+  id?: number;
+  name?: string;
+  points: IPoint[];
+}
+
 @Component({
   selector: 'app-generate-line',
   templateUrl: './generate-line.component.html',
@@ -24,7 +30,10 @@ export class GenerateLineComponent implements OnInit {
     return this.canvasRef.nativeElement;
   }
 
-  // @Input() shape: string;
+  @Input() shape: IShape;
+  @Output() updateMinimizationEvent = new EventEmitter();
+  @Input() isCanvasMinimized;
+  @Input() canDoActions;
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -42,17 +51,14 @@ export class GenerateLineComponent implements OnInit {
   private font;
   private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
-  public vertexVisibility = true;
+  public vertexVisibility = false;
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
-  public isCanvasExpanded = false;
 
   currentHeight;
   currentBh;
   mainObject: THREE.Mesh;
   heightPoint: THREE.Vector2;
-
-  points: IPoint[];
 
   widthRatio: number;
   heightRatio: number;
@@ -69,24 +75,17 @@ export class GenerateLineComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.points = [
-      {
-        point: new THREE.Vector2(-0.5, -0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(-0.5, 0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(0.5, 0.5),
-        type: 'line'
-      },
-      {
-        point: new THREE.Vector2(0.5, -0.5),
-        type: 'line'
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    for (let propName in changes) {
+      if (propName === 'isCanvasMinimized') {
+        if (this.shape?.points?.[0]?.object) {
+          this.resizeCanvas();
+        }
       }
-    ];
+      
+    }
   }
 
   async ngAfterViewInit() {
@@ -121,6 +120,8 @@ export class GenerateLineComponent implements OnInit {
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
 
     this.createPrimaryShape();
+
+      this.resizeCanvas();
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -140,10 +141,14 @@ export class GenerateLineComponent implements OnInit {
     window.addEventListener('resize', () => this.onWindowResize(), false);
   }
 
-  toggleExpand() {
-    this.isCanvasExpanded = !this.isCanvasExpanded;
-    this.toggleVerticesVisibility(!this.isCanvasExpanded);
-    if (this.isCanvasExpanded) {
+  toggleMinimize() {
+    this.isCanvasMinimized = !this.isCanvasMinimized;
+    this.resizeCanvas();
+    this.updateMinimizationEvent.emit(this.isCanvasMinimized);
+  }
+
+  resizeCanvas() {
+    if (this.isCanvasMinimized) {
       this.canvasWidth = 150;
       this.canvasHeight = 150;
     } else {
@@ -155,15 +160,24 @@ export class GenerateLineComponent implements OnInit {
     this.renderer.setSize(this.canvasWidth, this.canvasHeight);
     this.selectedObject = undefined;
     this.selectedAdjacentObject = undefined;
+    this.toggleVerticesVisibility(!this.isCanvasMinimized);
+  }
+
+  toggleVerticesVisibility(value?) {
+    this.vertexVisibility = value !== undefined ? value: !this.vertexVisibility;
+    this.shape.points.forEach(item => {
+      item.object.visible = this.vertexVisibility;
+      item.text.visible = this.vertexVisibility;
+    })
   }
 
   rotateMainObject(sign) {
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
     
-    this.points.map((item, index) => {
+    this.shape.points.map((item, index) => {
       item.object.position.applyMatrix4(rotationMatrix);
-      this.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+      this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
       item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
     });
   }
@@ -172,15 +186,15 @@ export class GenerateLineComponent implements OnInit {
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
     
-    this.points.map((item, index) => {
+    this.shape.points.map((item, index) => {
       item.object.position.applyMatrix4(rotationMatrix);
-      this.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+      this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
       item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
     });
   }
 
   destroyShape() {
-    this.points.forEach(item => {
+    this.shape.points.forEach(item => {
       this.scene.remove(item.object);
       this.scene.remove(item.text);
     });
@@ -190,9 +204,11 @@ export class GenerateLineComponent implements OnInit {
   createPrimaryShape() {
     this.drawMainObject();
     
-    this.points.map((item, index) => {
+    this.shape.points.map((item, index) => {
       item.object = this.addPoint(item.point, `Point_${index.toString()}`);
+      item.object.visible = this.vertexVisibility;
       item.text = this.addText(item.point ,index.toString());
+      item.text.visible = this.vertexVisibility;
     });
   }
 
@@ -215,9 +231,9 @@ export class GenerateLineComponent implements OnInit {
         vertices.push(vertex);
       }
       this.destroyShape();
-      this.points = [];
+      this.shape.points = [];
       vertices.forEach(item => {
-        this.points.push({
+        this.shape.points.push({
           point: item,
           type: 'line'
         })
@@ -228,55 +244,48 @@ export class GenerateLineComponent implements OnInit {
   }
 
   selectVertex(i) {
-    this.selectedObject = this.points[i].object;
+    this.selectedObject = this.shape.points[i].object;
     this.selectedAdjacentObject = undefined;
   }
 
-  toggleVerticesVisibility(value?) {
-    this.vertexVisibility = value !== undefined ? value: !this.vertexVisibility;
-    this.points.forEach(item => {
-      item.object.visible = this.vertexVisibility ;
-      item.text.visible = this.vertexVisibility ;
-    })
-  }
 
   selectEdge(i) {
     if (this.selectedObject) {
-      const lastPos = this.points.length - 1;
+      const lastPos = this.shape.points.length - 1;
       const j = +(this.selectedObject.name.replace('Point_', ''));
       if (j === i) {
         if (i === lastPos) {
-          this.selectedAdjacentObject = this.points[0].object;
+          this.selectedAdjacentObject = this.shape.points[0].object;
         } else {
-          this.selectedAdjacentObject = this.points[j + 1].object;
+          this.selectedAdjacentObject = this.shape.points[j + 1].object;
         }
       } else if (j === i + 1){
         if (i === -1) {
-          this.selectedAdjacentObject = this.points[lastPos].object;
+          this.selectedAdjacentObject = this.shape.points[lastPos].object;
         } else {
-          this.selectedAdjacentObject = this.points[j - 1].object;
+          this.selectedAdjacentObject = this.shape.points[j - 1].object;
         }
       }
     }
   }
 
   isEdgeSelected(i) {
-    const lastPos = this.points.length - 1;
+    const lastPos = this.shape.points.length - 1;
     
     if (this.selectedObject && this.selectedAdjacentObject) {
       if (i === -1) {
-        if (this.points[0].object?.name === this.selectedObject?.name && this.points[lastPos].object?.name === this.selectedAdjacentObject?.name) {
+        if (this.shape.points[0].object?.name === this.selectedObject?.name && this.shape.points[lastPos].object?.name === this.selectedAdjacentObject?.name) {
           return true;
         }
         return false;
       } else {
-        if ((i < lastPos && this.points[i+1]?.object?.name === this.selectedObject?.name)) {
-          if (this.points[i].object.name === this.selectedAdjacentObject.name) {
+        if ((i < lastPos && this.shape.points[i+1]?.object?.name === this.selectedObject?.name)) {
+          if (this.shape.points[i].object.name === this.selectedAdjacentObject.name) {
             return true;
           }
           return false;
-        } else if (this.points[i]?.object?.name === this.selectedObject?.name) {
-          if ((i < lastPos && this.points[i+1].object.name === this.selectedAdjacentObject.name) || (i === lastPos && this.points[0].object.name === this.selectedAdjacentObject.name)) {
+        } else if (this.shape.points[i]?.object?.name === this.selectedObject?.name) {
+          if ((i < lastPos && this.shape.points[i+1].object.name === this.selectedAdjacentObject.name) || (i === lastPos && this.shape.points[0].object.name === this.selectedAdjacentObject.name)) {
             
             return true;
           }
@@ -287,37 +296,37 @@ export class GenerateLineComponent implements OnInit {
   }
 
   getAngle(i) {
-    const lastPos = this.points.length - 1;
-    let point1 = this.points[i].point;
+    const lastPos = this.shape.points.length - 1;
+    let point1 = this.shape.points[i].point;
     let point2;
     let point3;
     if (i === 0) {
-      point2 = this.points[lastPos].point;
-      point3 = this.points[i + 1].point;
+      point2 = this.shape.points[lastPos].point;
+      point3 = this.shape.points[i + 1].point;
     } else if (i === lastPos) {
-      point2 = this.points[i - 1].point;
-      point3 = this.points[0].point;
+      point2 = this.shape.points[i - 1].point;
+      point3 = this.shape.points[0].point;
     } else {
-      point2 = this.points[i - 1].point;
-      point3 = this.points[i + 1].point;
+      point2 = this.shape.points[i - 1].point;
+      point3 = this.shape.points[i + 1].point;
     }
     return this.geometryService.calculateAngle(point1, point2, point3).toFixed(2);
   }
 
   getEdgeLength(i) {
-    const lastPos = this.points.length - 1;
+    const lastPos = this.shape.points.length - 1;
     let point1;
     let point2;
     if (i >= 0) {
-      point1 = this.points[i].point;
+      point1 = this.shape.points[i].point;
       if (i === lastPos) {
-        point2 = this.points[0].point;
+        point2 = this.shape.points[0].point;
       } else {
-        point2 = this.points[i + 1].point;
+        point2 = this.shape.points[i + 1].point;
       }
     } else {
-      point1 = this.points[0].point;
-      point2 = this.points[lastPos].point;
+      point1 = this.shape.points[0].point;
+      point2 = this.shape.points[lastPos].point;
     }
     return point1.distanceTo(point2);
   }
@@ -326,12 +335,12 @@ export class GenerateLineComponent implements OnInit {
     if (this.selectedObject && this.selectedAdjacentObject) {
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
-      const lastPos = this.points.length - 1;
+      const lastPos = this.shape.points.length - 1;
       const middle = new THREE.Vector2(
-        (this.points[i].point.x + this.points[j].point.x) / 2,
-        (this.points[i].point.y + this.points[j].point.y) / 2
+        (this.shape.points[i].point.x + this.shape.points[j].point.x) / 2,
+        (this.shape.points[i].point.y + this.shape.points[j].point.y) / 2
       );
-      const listLength = this.points.length;
+      const listLength = this.shape.points.length;
       
       let newPoint = {
         point: middle,
@@ -341,9 +350,9 @@ export class GenerateLineComponent implements OnInit {
       }
   
       if ((j === 0 && i === lastPos) || (i === 0 && j === lastPos)) {
-        this.points.push(newPoint)
+        this.shape.points.push(newPoint)
       } else {
-        this.points.splice(Math.max(i,j), 0, newPoint);
+        this.shape.points.splice(Math.max(i,j), 0, newPoint);
       }
       this.selectedObject = undefined;
       this.selectedAdjacentObject = undefined;
@@ -353,18 +362,18 @@ export class GenerateLineComponent implements OnInit {
   }
 
   removeVertex() {
-    if (this.points.length > 3) {
-      let point = this.points[+(this.selectedObject.name.replace('Point_', ''))];
+    if (this.shape.points.length > 3) {
+      let point = this.shape.points[+(this.selectedObject.name.replace('Point_', ''))];
       this.scene.remove(point.object);
       this.scene.remove(point.text);
-      this.points.splice(+(this.selectedObject.name.replace('Point_', '')), 1);
+      this.shape.points.splice(+(this.selectedObject.name.replace('Point_', '')), 1);
       this.mainObject.geometry = this.createShape();
       this.refreshPoints();
     }
   }
 
   refreshPoints() {
-    this.points.map((item, index) => {
+    this.shape.points.map((item, index) => {
       item.object.name = `Point_${index.toString()}`;
       item.text.geometry = new TextGeometry(index.toString(), {
         font: this.font,
@@ -378,27 +387,27 @@ export class GenerateLineComponent implements OnInit {
 
   createShape() {
     const shapeGeometry = new THREE.Shape();
-    const lastPos = this.points.length - 1;
+    const lastPos = this.shape.points.length - 1;
 
-    shapeGeometry.moveTo(this.points[0].point.x, this.points[0].point.y);
+    shapeGeometry.moveTo(this.shape.points[0].point.x, this.shape.points[0].point.y);
 
-    for (let i = 1; i < this.points.length; i++) {
+    for (let i = 1; i < this.shape.points.length; i++) {
       
-      if (this.points[i].type === 'line') {
-        shapeGeometry.lineTo(this.points[i].point.x, this.points[i].point.y);
+      if (this.shape.points[i].type === 'line') {
+        shapeGeometry.lineTo(this.shape.points[i].point.x, this.shape.points[i].point.y);
       } else {
         let cp;
         if (i === lastPos) {
-          cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[0].point.x, this.points[0].point.y));
-          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.points[0].point.x, this.points[0].point.y);
+          cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.shape.points[i].point.x, this.shape.points[i].point.y), new THREE.Vector2(this.shape.points[i-1].point.x, this.shape.points[i-1].point.y), new THREE.Vector2(this.shape.points[0].point.x, this.shape.points[0].point.y));
+          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.shape.points[0].point.x, this.shape.points[0].point.y);
         } else {
           let cp;
           if (i > 0) {
-            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[i].point.x, this.points[i].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y));
+            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.shape.points[i].point.x, this.shape.points[i].point.y), new THREE.Vector2(this.shape.points[i-1].point.x, this.shape.points[i-1].point.y), new THREE.Vector2(this.shape.points[i+1].point.x, this.shape.points[i+1].point.y));
           } else {
-            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.points[lastPos].point.x, this.points[lastPos].point.y), new THREE.Vector2(this.points[i-1].point.x, this.points[i-1].point.y), new THREE.Vector2(this.points[i+1].point.x, this.points[i+1].point.y));
+            cp = this.geometryService.getCurveControlPoint(new THREE.Vector2(this.shape.points[lastPos].point.x, this.shape.points[lastPos].point.y), new THREE.Vector2(this.shape.points[i-1].point.x, this.shape.points[i-1].point.y), new THREE.Vector2(this.shape.points[i+1].point.x, this.shape.points[i+1].point.y));
           }
-          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.points[i + 1].point.x, this.points[i + 1].point.y);
+          shapeGeometry.quadraticCurveTo(cp.x, cp.y, this.shape.points[i + 1].point.x, this.shape.points[i + 1].point.y);
           i++;
         }
       }
@@ -498,12 +507,12 @@ export class GenerateLineComponent implements OnInit {
       
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
-      const newPoint = this.geometryService.changeEdgeLength(this.points[i].point, this.points[j].point, value);
+      const newPoint = this.geometryService.changeEdgeLength(this.shape.points[i].point, this.shape.points[j].point, value);
       
         
-      this.points[j].point = newPoint;
+      this.shape.points[j].point = newPoint;
       this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-      this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+      this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
       
       this.mainObject.geometry = this.createShape();
     }
@@ -515,7 +524,7 @@ export class GenerateLineComponent implements OnInit {
     obj.text.position.set(position.x + this.textOffset.x, position.y + this.textOffset.y, 0);
     obj.point = new THREE.Vector2(position.x, position.y);
     
-    const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
+    const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
 
     if (!isVAlidShape) {
       if (!this.mainObject.visible) {
@@ -540,14 +549,14 @@ export class GenerateLineComponent implements OnInit {
       const intersect = this.raycaster.intersectObject(this.selectedObject)[0];
       if (intersect) {
         const position = intersect.point.sub(this.startPosition);
-        this.movePoint(position, this.points[+(this.selectedObject.name.replace('Point_', ''))]);
+        this.movePoint(position, this.shape.points[+(this.selectedObject.name.replace('Point_', ''))]);
       }
     }
   };
 
   onMouseDown(event) {
-    if (this.isCanvasExpanded) {
-      this.toggleExpand();
+    if (this.isCanvasMinimized) {
+      this.toggleMinimize();
     } else {
       if (this.vertexVisibility) {
         const intersects = this.raycaster.intersectObjects(this.scene.children);
@@ -588,7 +597,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (!this.pressedKeys.includes(event.key) && !this.isCanvasExpanded) {
+    if (!this.pressedKeys.includes(event.key) && !this.isCanvasMinimized && this.canDoActions) {
       this.pressedKeys.push(event.key);
     }
 
@@ -658,12 +667,12 @@ export class GenerateLineComponent implements OnInit {
       if (this.selectedObject) {
         let [i,j,k] = this.getAdjacentPoints();
   
-        if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
-          const newPoint = this.geometryService.movePointToMediatingLine(this.points[i].point, this.points[j].point, this.points[k].point);
+        if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
+          const newPoint = this.geometryService.movePointToMediatingLine(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
           
-          this.points[i].point = newPoint;
+          this.shape.points[i].point = newPoint;
           this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-          this.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+          this.shape.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
           
           this.mainObject.geometry = this.createShape();
         }
@@ -674,12 +683,12 @@ export class GenerateLineComponent implements OnInit {
       if (this.selectedObject && this.selectedAdjacentObject) {
         let [i,j,k] = this.getAdjacentPoint();
         
-        if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
-          const newPoint = this.geometryService.equalizeEdges(this.points[i].point, this.points[j].point, this.points[k].point);
+        if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
+          const newPoint = this.geometryService.equalizeEdges(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
           
-          this.points[j].point = newPoint;
+          this.shape.points[j].point = newPoint;
           this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-          this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+          this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
           
           this.mainObject.geometry = this.createShape();
         }
@@ -688,14 +697,14 @@ export class GenerateLineComponent implements OnInit {
   }
 
   displayLine(i: number) {
-    let lastPos = this.points.length - 1;
+    let lastPos = this.shape.points.length - 1;
     let j = i + 1;
     if (i === -1 || i === lastPos) {
       i = lastPos;
       j = 0;
     }
     
-    if (this.points[i]?.type === 'curve' || this.points[j]?.type === 'curve') {
+    if (this.shape.points[i]?.type === 'curve' || this.shape.points[j]?.type === 'curve') {
       return false;
     }
 
@@ -705,7 +714,7 @@ export class GenerateLineComponent implements OnInit {
   getAdjacentPoints() {
     let i = +(this.selectedObject.name.replace('Point_', ''));
     let j, k;
-    const lastPos = this.points.length - 1;
+    const lastPos = this.shape.points.length - 1;
     if (i === 0) {
       k = i + 1;
       j = lastPos;
@@ -723,15 +732,15 @@ export class GenerateLineComponent implements OnInit {
     let i = +(this.selectedObject.name.replace('Point_', ''));
     let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
     let k;
-    if (j < i || i === this.points.length - 1) {
+    if (j < i || i === this.shape.points.length - 1) {
       k = i + 1;
-      if (k === this.points.length) {
+      if (k === this.shape.points.length) {
         k = 0;
       }
     } else {
       k = i - 1;
       if (k === -1) {
-        k = this.points.length - 1;
+        k = this.shape.points.length - 1;
       }
     }
     return [i, j, k];
@@ -741,20 +750,20 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed && this.selectedObject && this.selectedAdjacentObject) {
       let [i, j, k] = this.getAdjacentPoint();
       
-      if (this.points[i].type === 'line' && this.points[j].type === 'line') {
+      if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line') {
         this.value += this.sign * 0.01;
-        const crossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
+        const crossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
         this.value *= crossProductSign;
 
-        const newPoint = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
-        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, newPoint, this.points[k].point);
+        const newPoint = this.geometryService.rotateAroundPoint(this.shape.points[i].point, this.shape.points[j].point, this.value);
+        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, newPoint, this.shape.points[k].point);
 
         if (crossProductSign !== 0 && newCrossProductSign === crossProductSign) {
-          this.points[j].point = newPoint;
-          this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-          this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+          this.shape.points[j].point = newPoint;
+          this.shape.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+          this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
   
-          const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
+          const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
 
           if (!isVAlidShape) {
             if (!this.mainObject.visible) {
@@ -778,28 +787,28 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed && this.selectedObject) {
       let [i,j,k] = this.getAdjacentPoints();
       
-      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+      if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
         this.value += this.sign * 0.01;
-        const crossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, this.points[j].point, this.points[k].point);
+        const crossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
         
         if (crossProductSign !== 0) {
           this.value *= crossProductSign;
         }
 
-        const newPointJ = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[j].point, this.value);
-        const newPointK = this.geometryService.rotateAroundPoint(this.points[i].point, this.points[k].point, -this.value);
-        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.points[i].point, newPointJ, newPointK);
+        const newPointJ = this.geometryService.rotateAroundPoint(this.shape.points[i].point, this.shape.points[j].point, this.value);
+        const newPointK = this.geometryService.rotateAroundPoint(this.shape.points[i].point, this.shape.points[k].point, -this.value);
+        const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, newPointJ, newPointK);
 
         if (crossProductSign !== 0 &&  newCrossProductSign === crossProductSign) {
-          this.points[j].point = newPointJ;
-          this.points[j].object.position.copy(new THREE.Vector3(newPointJ.x, newPointJ.y, 0));
-          this.points[j].text.position.set(newPointJ.x + this.textOffset.x, newPointJ.y + this.textOffset.y, 0);
+          this.shape.points[j].point = newPointJ;
+          this.shape.points[j].object.position.copy(new THREE.Vector3(newPointJ.x, newPointJ.y, 0));
+          this.shape.points[j].text.position.set(newPointJ.x + this.textOffset.x, newPointJ.y + this.textOffset.y, 0);
   
-          this.points[k].point = newPointK
-          this.points[k].object.position.copy(new THREE.Vector3(newPointK.x, newPointK.y, 0));
-          this.points[k].text.position.set(newPointK.x + this.textOffset.x, newPointK.y + this.textOffset.y, 0);
+          this.shape.points[k].point = newPointK
+          this.shape.points[k].object.position.copy(new THREE.Vector3(newPointK.x, newPointK.y, 0));
+          this.shape.points[k].text.position.set(newPointK.x + this.textOffset.x, newPointK.y + this.textOffset.y, 0);
     
-          const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.points.map(item => item.point));
+          const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
 
           if (!isVAlidShape) {
             if (!this.mainObject.visible) {
@@ -824,17 +833,17 @@ export class GenerateLineComponent implements OnInit {
     if (this.isKeyPressed && this.selectedObject) {
       let [i,j,k] = this.getAdjacentPoints();
       
-      if (this.points[i].type === 'line' && this.points[j].type === 'line' && this.points[k].type === 'line') {
+      if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
         this.value += this.sign * 0.01;
-        let newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
-        this.points[j].point = newPoint;
-        this.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        let newPoint = this.geometryService.addToEdgeLength(this.shape.points[i].point, this.shape.points[j].point, this.value);
+        this.shape.points[j].point = newPoint;
+        this.shape.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
 
-        newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[k].point, this.value);
-        this.points[k].point = newPoint;
-        this.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        newPoint = this.geometryService.addToEdgeLength(this.shape.points[i].point, this.shape.points[k].point, this.value);
+        this.shape.points[k].point = newPoint;
+        this.shape.points[k].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+        this.shape.points[k].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
         
         this.mainObject.geometry = this.createShape();
       }
@@ -852,12 +861,12 @@ export class GenerateLineComponent implements OnInit {
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
 
-      if (this.points[i].type === 'line' && this.points[j].type === 'line') {
-        const newPoint = this.geometryService.addToEdgeLength(this.points[i].point, this.points[j].point, this.value);
+      if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line') {
+        const newPoint = this.geometryService.addToEdgeLength(this.shape.points[i].point, this.shape.points[j].point, this.value);
         
-        this.points[j].point = newPoint;
+        this.shape.points[j].point = newPoint;
         this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-        this.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+        this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
         
         this.mainObject.geometry = this.createShape();
       }
