@@ -14,6 +14,7 @@ export class HomeComponent implements OnInit {
   public surface: IShape;
   public expandedShapeDetails: IShape;
   public selectedPart: IShape;
+  public isEditingSurface = true;
 
   constructor() { }
 
@@ -80,21 +81,31 @@ export class HomeComponent implements OnInit {
   updateShapeMinimization(event, shape: IShape) {
     this.selectedPart = undefined;
     if (event === true) {
-      this.expandedShapeDetails = undefined;
-      
-      this.parts = this.parts.map((item) => {
-        const partId = item.partId;
-        if (item.id === shape.id) {
-          item = cloneDeep(shape);
-          item.wasInitialized = false;
-          item.partId = partId;
-        }
-        return item;
-      });
-      
+      if (shape.id === 0) {
+        this.isEditingSurface = false;
+        this.surface.wasInitialized = false;
+      } else {
+        this.expandedShapeDetails = undefined;
+        this.parts = this.parts.map((item) => {
+          const partId = item.partId;
+          if (item.id === shape.id) {
+            item = cloneDeep(shape);
+            item.wasInitialized = false;
+            item.partId = partId;
+          }
+          return item;
+        });
+      }
     } else {
       this.expandedShapeDetails = shape;
     }
+  }
+
+  openSurfaceEdit() {
+    this.expandedShapeDetails = undefined;
+    this.selectedPart = undefined;
+    this.isEditingSurface = true;
+    this.shapes.forEach(item => item.wasInitialized = false);
   }
 
   useShape(shape: IShape) {

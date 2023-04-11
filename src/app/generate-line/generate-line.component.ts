@@ -34,10 +34,11 @@ export class GenerateLineComponent implements OnInit {
   }
 
   @Input() shape: IShape;
-  @Output() updateMinimizationEvent = new EventEmitter();
   @Input() isCanvasMinimized;
   @Input() canDoActions;
   @Input() isPart;
+  @Input() isSurface;
+  @Output() updateMinimizationEvent = new EventEmitter();
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -97,6 +98,11 @@ export class GenerateLineComponent implements OnInit {
     }
   }
 
+  ngOnDistroy() {
+    this.renderer.dispose()
+    this.renderer.forceContextLoss()
+  }
+
   async ngAfterViewInit() {
     let ratio = 1;
     if (this.isPart) {
@@ -106,6 +112,7 @@ export class GenerateLineComponent implements OnInit {
     }
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
+
 
     this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
     this.renderer.shadowMap.enabled = true;
@@ -154,6 +161,7 @@ export class GenerateLineComponent implements OnInit {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
+    
   }
 
   toggleMinimize() {

@@ -1,12 +1,15 @@
 <div class="row page-container">
-    <app-generate-line [shape]="surface" [canDoActions]="!expandedShapeDetails"></app-generate-line>
     <div class="col">
+        <button *ngIf="!isEditingSurface" (click)="openSurfaceEdit()">Open edit</button>
+        <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface] = true [canDoActions]="!expandedShapeDetails" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
+    </div>
+    <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">
             <app-generate-line (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false"></app-generate-line>
-            <label *ngIf="selectedPart?.partId === part.partId" >asd</label>
+            <label *ngIf="selectedPart?.partId === part.partId" >x</label>
         </div>
     </div>
-    <div class="col shape-list-container">
+    <div *ngIf="!isEditingSurface" class="col shape-list-container">
         <button class="add-shape-button" (click)="addNewShape()">Add shape</button>
         <div class="row shape-container" *ngFor="let shape of shapes; let i = index;">
             <div class="col shape-usage">
