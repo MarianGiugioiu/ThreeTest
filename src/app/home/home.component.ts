@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
+import { cloneDeep } from 'lodash';
 
 @Component({
   selector: 'app-home',
@@ -9,8 +10,10 @@ import * as THREE from 'three';
 })
 export class HomeComponent implements OnInit {
   public shapes: IShape[] = [];
+  public parts: IShape[] = []
   public surface: IShape;
   public expandedShapeDetails: IShape;
+  public selectedPart: IShape;
 
   constructor() { }
 
@@ -19,10 +22,12 @@ export class HomeComponent implements OnInit {
   }
 
   addNewShape() {
+    this.selectedPart = undefined;
     this.shapes.unshift(
       {
         id: this.shapes.length + 1,
         name: 'asd',
+        textureType: 0,
         points:[
           {
             point: new THREE.Vector2(-0.5, -0.5),
@@ -50,6 +55,7 @@ export class HomeComponent implements OnInit {
     this.surface = {
       id: 0,
       name: 'Surface',
+      textureType: 0,
       points:[
         {
           point: new THREE.Vector2(-0.5, -0.5),
@@ -72,10 +78,42 @@ export class HomeComponent implements OnInit {
   }
 
   updateShapeMinimization(event, shape: IShape) {
+    this.selectedPart = undefined;
     if (event === true) {
       this.expandedShapeDetails = undefined;
+      
+      this.parts = this.parts.map((item) => {
+        const partId = item.partId;
+        if (item.id === shape.id) {
+          item = cloneDeep(shape);
+          item.wasInitialized = false;
+          item.partId = partId;
+        }
+        return item;
+      });
+      
     } else {
       this.expandedShapeDetails = shape;
+    }
+  }
+
+  useShape(shape: IShape) {
+    let part = cloneDeep(shape);
+    part.partId = this.parts.length + 1;
+    part.wasInitialized = false;
+    this.selectedPart = part;
+    this.parts.unshift(part);
+  }
+
+  deleteShape(i: number) {
+    this.shapes.splice(i, 1);
+  }
+
+  toggleSelectPart(part: IShape) {
+    if (this.selectedPart?.partId === part.partId) {
+      this.selectedPart = undefined;
+    } else {
+      this.selectedPart = part;
     }
   }
 }

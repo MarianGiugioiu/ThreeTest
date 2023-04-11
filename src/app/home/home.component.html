@@ -1,7 +1,19 @@
 <div class="row page-container">
     <app-generate-line [shape]="surface" [canDoActions]="!expandedShapeDetails"></app-generate-line>
+    <div class="col">
+        <div class="row" *ngFor="let part of parts; let i = index;">
+            <app-generate-line (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false"></app-generate-line>
+            <label *ngIf="selectedPart?.partId === part.partId" >asd</label>
+        </div>
+    </div>
     <div class="col shape-list-container">
         <button class="add-shape-button" (click)="addNewShape()">Add shape</button>
-        <app-generate-line class="shape-container" *ngFor="let shape of shapes" [shape]="shape" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="true" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
+        <div class="row shape-container" *ngFor="let shape of shapes; let i = index;">
+            <div class="col shape-usage">
+                <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="useShape(shape)">Use</button>
+                <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="deleteShape(i)">Delete</button>
+            </div>
+            <app-generate-line [shape]="shape" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="true" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
+        </div>
     </div>
 </div>

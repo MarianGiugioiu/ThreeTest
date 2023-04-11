@@ -14,9 +14,12 @@ export interface IPoint {
 }
 
 export interface IShape {
+  partId?: number;
   id?: number;
   name?: string;
+  textureType?: number;
   points: IPoint[];
+  wasInitialized?: boolean
 }
 
 @Component({
@@ -34,6 +37,7 @@ export class GenerateLineComponent implements OnInit {
   @Output() updateMinimizationEvent = new EventEmitter();
   @Input() isCanvasMinimized;
   @Input() canDoActions;
+  @Input() isPart;
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -54,6 +58,7 @@ export class GenerateLineComponent implements OnInit {
   public vertexVisibility = false;
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
+  public textures = [];
 
   currentHeight;
   currentBh;
@@ -75,12 +80,16 @@ export class GenerateLineComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.textureLoader = new THREE.TextureLoader();
+    this.fontLoader = new FontLoader();
+    this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
+    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
   }
 
   ngOnChanges(changes: SimpleChanges) {
     for (let propName in changes) {
       if (propName === 'isCanvasMinimized') {
-        if (this.shape?.points?.[0]?.object) {
+        if (this.shape.wasInitialized) {
           this.resizeCanvas();
         }
       }
@@ -89,6 +98,12 @@ export class GenerateLineComponent implements OnInit {
   }
 
   async ngAfterViewInit() {
+    let ratio = 1;
+    if (this.isPart) {
+      this.canvasWidth = 150;
+      this.canvasHeight = 150;
+      ratio = 2;
+    }
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
 
@@ -97,10 +112,10 @@ export class GenerateLineComponent implements OnInit {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.camera = new THREE.OrthographicCamera(
-      this.canvasWidth / -200, // left
-      this.canvasWidth / 200, // right
-      this.canvasHeight / 200, // top
-      this.canvasHeight / -200, // bottom
+      this.canvasWidth / -200 * ratio, // left
+      this.canvasWidth / 200 * ratio, // right
+      this.canvasHeight / 200 * ratio, // top
+      this.canvasHeight / -200 * ratio, // bottom
       1, // near
       1000 // far
     );
@@ -109,19 +124,19 @@ export class GenerateLineComponent implements OnInit {
     this.controls.enableRotate = false;
     this.controls.update();
 
-
-    this.textureLoader = new THREE.TextureLoader();
-    this.fontLoader = new FontLoader();
-    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
-
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(this.ambientLight);
 
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
 
+
     this.createPrimaryShape();
+    this.shape.wasInitialized = true;
+
+    if (!this.isPart) {
 
       this.resizeCanvas();
+    }
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -362,11 +377,13 @@ export class GenerateLineComponent implements OnInit {
   }
 
   removeVertex() {
-    if (this.shape.points.length > 3) {
+    if (this.selectedObject && this.shape.points.length > 3) {
       let point = this.shape.points[+(this.selectedObject.name.replace('Point_', ''))];
       this.scene.remove(point.object);
       this.scene.remove(point.text);
       this.shape.points.splice(+(this.selectedObject.name.replace('Point_', '')), 1);
+      this.selectedObject = undefined;
+      this.selectedAdjacentObject = undefined;
       this.mainObject.geometry = this.createShape();
       this.refreshPoints();
     }
@@ -419,6 +436,20 @@ export class GenerateLineComponent implements OnInit {
     return new THREE.ShapeGeometry(shapeGeometry);
   }
 
+  changeShapeDimension() {
+    this.shape.points.forEach(elem => {
+      let value = 1.01
+      if (this.sign < 0) {
+        value = 1 / value;
+      }
+      elem.point.x *= value;
+      elem.point.y *= value;
+      elem.object.position.copy(new THREE.Vector3(elem.point.x, elem.point.y, 0));
+      elem.text.position.set(elem.point.x + this.textOffset.x, elem.point.y + this.textOffset.y, 0);
+      this.mainObject.geometry = this.createShape();
+    });
+  }
+
   addText(position: THREE.Vector2, text: string) {
     
     const textGeometry = new TextGeometry(text, {
@@ -439,7 +470,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   drawMainObject() {
-    const texture = this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80');
+    const texture = this.textures[this.shape.textureType];
     
     // Create a material for the lines
     const material = new THREE.MeshBasicMaterial({ map: texture });
@@ -555,7 +586,7 @@ export class GenerateLineComponent implements OnInit {
   };
 
   onMouseDown(event) {
-    if (this.isCanvasMinimized) {
+    if (!this.isPart && this.isCanvasMinimized) {
       this.toggleMinimize();
     } else {
       if (this.vertexVisibility) {
@@ -601,23 +632,35 @@ export class GenerateLineComponent implements OnInit {
       this.pressedKeys.push(event.key);
     }
 
-    if (this.pressedKeys.includes('Shift') && this.pressedKeys.includes('+')) {
+    if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
       this.isKeyPressed = true;
       this.rotateMainObject(1);
     }
 
-    if (this.pressedKeys.includes('Shift') && this.pressedKeys.includes('-')) {
+    if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
       this.isKeyPressed = true;
       this.rotateMainObject(-1);
     }
+
+    if (this.pressedKeys.includes('/') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+      this.isKeyPressed = true;
+      this.sign = 1;
+      this.changeShapeDimension()
+    }
+
+    if (this.pressedKeys.includes('/') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+      this.isKeyPressed = true;
+      this.sign = -1;
+      this.changeShapeDimension()
+    }
     
-    if (this.pressedKeys.includes('[') && this.pressedKeys.includes('+')) {
+    if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
       this.isKeyPressed = true;
       this.sign = -1;
       this.value = 0;
       this.changeAngle();
     }
-    if (this.pressedKeys.includes('[') && this.pressedKeys.includes('-')) {
+    if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
       this.isKeyPressed = true;
       this.sign = 1;
       this.value = 0;
@@ -637,13 +680,13 @@ export class GenerateLineComponent implements OnInit {
       this.doubleChangeAngle();
     }
 
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('+')) {
+    if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
       this.isKeyPressed = true;
       this.sign = 1;
       this.value = 0;
       this.changeLength();
     }
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('-')) {
+    if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
       this.isKeyPressed = true;
       this.sign = -1;
       this.value = 0;
