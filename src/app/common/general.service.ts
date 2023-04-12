@@ -10,8 +10,6 @@ export class GeneralService {
   findSmallestNumberNotInList(numbers) {
     numbers.sort((a, b) => a - b);
 
-    console.log(numbers);
-    
     let smallestNumber = 1;
   
     for (let i = 0; i < numbers.length; i++) {

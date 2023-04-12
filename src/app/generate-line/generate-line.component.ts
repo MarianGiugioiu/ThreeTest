@@ -18,8 +18,9 @@ export interface IShape {
   id?: number;
   name?: string;
   textureType?: number;
-  points: IPoint[];
-  wasInitialized?: boolean
+  points?: IPoint[];
+  wasInitialized?: boolean;
+  position?: THREE.Vector3;
 }
 
 @Component({
@@ -478,18 +479,14 @@ export class GenerateLineComponent implements OnInit {
 
   drawMainObject() {
     const texture = this.textures[this.shape.textureType];
-    
-    // Create a material for the lines
     const material = new THREE.MeshBasicMaterial({ map: texture });
     material.map.repeat.set(0.25, 0.25);
     material.map.offset.set(0.5, 0.5);
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
-    // Create a line from the geometry and material
     this.mainObject = new THREE.Mesh(this.createShape(), material);
     this.mainObject.name = this.shape.name;
     
-    // Add the line to the scene
     this.scene.add(this.mainObject);
   }
 

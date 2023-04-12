@@ -11,7 +11,9 @@ import { GeneralService } from '../common/general.service';
 })
 export class HomeComponent implements OnInit {
   public shapes: IShape[] = [];
-  public parts: IShape[] = []
+  public parts: IShape[] = [];
+  public surfaceParts: IShape[] = [];
+  public testParts: THREE.Mesh[] = [];
   public surface: IShape;
   public expandedShapeDetails: IShape;
   public selectedPart: IShape;
@@ -98,6 +100,7 @@ export class HomeComponent implements OnInit {
           }
           return item;
         });
+        this.generateSurfaceParts();
       }
     } else {
       this.expandedShapeDetails = shape;
@@ -119,10 +122,17 @@ export class HomeComponent implements OnInit {
     part.wasInitialized = false;
     this.selectedPart = part;
     this.parts.unshift(part);
+    this.generateSurfaceParts();
+    
   }
 
   deleteShape(i: number) {
     this.shapes.splice(i, 1);
+  }
+
+  deletePart(i: number) {
+    this.parts.splice(i, 1);
+    this.generateSurfaceParts();
   }
 
   toggleSelectPart(part: IShape) {
@@ -145,4 +155,32 @@ export class HomeComponent implements OnInit {
     const nextNumber = this.generalService.findSmallestNumberNotInList(unnamedItemsNumber);
     return type + '_' + nextNumber;
   }
+
+  updateSurfacePart(part) {
+    this.surfaceParts = [...this.surfaceParts];
+    let surfacePartIndex = this.surfaceParts.findIndex(item => item.partId === part.partId);
+  }
+
+  generateSurfaceParts() {
+    this.surfaceParts = [];
+    this.parts.forEach(part => {
+      this.surfaceParts.push({
+        partId: part.partId,
+        id: part.id,
+        name: part.name,
+        textureType: part.textureType,
+        points: cloneDeep(part.points)
+      });
+    })
+  };
+
+  getPart() {
+    // let items = [];
+    // this.shapes.forEach(item => items.push(item.shape));
+    // return items;
+    // return this.parts.map(item => item.shape);
+    // return [this.surface.shape]
+    
+  }
+  
 }
