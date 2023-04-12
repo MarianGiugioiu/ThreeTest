@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
 import { cloneDeep } from 'lodash';
+import { GeneralService } from '../common/general.service';
 
 @Component({
   selector: 'app-home',
@@ -16,7 +17,7 @@ export class HomeComponent implements OnInit {
   public selectedPart: IShape;
   public isEditingSurface = true;
 
-  constructor() { }
+  constructor(public generalService: GeneralService) { }
 
   ngOnInit(): void {
     this.createSurface();
@@ -27,7 +28,7 @@ export class HomeComponent implements OnInit {
     this.shapes.unshift(
       {
         id: this.shapes.length + 1,
-        name: 'asd',
+        name: this.createNewName('Shape'),
         textureType: 0,
         points:[
           {
@@ -88,8 +89,10 @@ export class HomeComponent implements OnInit {
         this.expandedShapeDetails = undefined;
         this.parts = this.parts.map((item) => {
           const partId = item.partId;
+          const partName = item.name;
           if (item.id === shape.id) {
             item = cloneDeep(shape);
+            item.name = partName;
             item.wasInitialized = false;
             item.partId = partId;
           }
@@ -106,10 +109,12 @@ export class HomeComponent implements OnInit {
     this.selectedPart = undefined;
     this.isEditingSurface = true;
     this.shapes.forEach(item => item.wasInitialized = false);
+    this.parts.forEach(item => item.wasInitialized = false);
   }
 
   useShape(shape: IShape) {
     let part = cloneDeep(shape);
+    part.name = this.createNewName('Part');
     part.partId = this.parts.length + 1;
     part.wasInitialized = false;
     this.selectedPart = part;
@@ -126,5 +131,18 @@ export class HomeComponent implements OnInit {
     } else {
       this.selectedPart = part;
     }
+  }
+
+  createNewName(type) {
+    let list = this.shapes;
+    if (type === 'Part') {
+      list = this.parts;
+    }
+    let unnamedItems = list.filter(item => item.name.includes(type + '_'));
+    let unnamedItemsNumber = unnamedItems.map(item => {
+      return +item.name.replace(type + '_', '');
+    });
+    const nextNumber = this.generalService.findSmallestNumberNotInList(unnamedItemsNumber);
+    return type + '_' + nextNumber;
   }
 }

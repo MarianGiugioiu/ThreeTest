@@ -14,6 +14,7 @@ import { ShadersComponent } from './shaders/shaders.component';
 import { WebglComponent } from './webgltest/webgl.component';
 import { FormsModule } from '@angular/forms';
 import { HomeComponent } from './home/home.component';
+import { PlaceShapesComponent } from './place-shapes/place-shapes.component';
 
 @NgModule({
   declarations: [
@@ -27,6 +28,7 @@ import { HomeComponent } from './home/home.component';
     MandelbrotComponent,
     RaycastingComponent,
     GenerateLineComponent,
+    PlaceShapesComponent,
     HomeComponent
   ],
   imports: [

@@ -23,11 +23,11 @@ export interface IShape {
 }
 
 @Component({
-  selector: 'app-generate-line',
-  templateUrl: './generate-line.component.html',
-  styleUrls: ['./generate-line.component.scss']
+  selector: 'app-place-shapes',
+  templateUrl: './place-shapes.component.html',
+  styleUrls: ['./place-shapes.component.scss']
 })
-export class GenerateLineComponent implements OnInit {
+export class PlaceShapesComponent implements OnInit {
   @ViewChild('canvas') private canvasRef: ElementRef;
   private get canvas(): HTMLCanvasElement {
     return this.canvasRef.nativeElement;
@@ -135,7 +135,8 @@ export class GenerateLineComponent implements OnInit {
     this.scene.add(this.ambientLight);
 
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
-    
+
+
     this.createPrimaryShape();
     this.shape.wasInitialized = true;
 
@@ -487,7 +488,7 @@ export class GenerateLineComponent implements OnInit {
     material.map.wrapT = THREE.RepeatWrapping;
     // Create a line from the geometry and material
     this.mainObject = new THREE.Mesh(this.createShape(), material);
-    this.mainObject.name = this.shape.name;
+    this.mainObject.name = 'main_object'
     
     // Add the line to the scene
     this.scene.add(this.mainObject);
@@ -603,7 +604,7 @@ export class GenerateLineComponent implements OnInit {
         if (intersects.length > 0) {
           this.selectedObject = intersects[0].object  as THREE.Mesh;
           
-          if (intersects[0].object.name === this.shape.name && intersects[1] && this.vertexVisibility) {
+          if (intersects[0].object.name === 'main_object' && intersects[1] && this.vertexVisibility) {
             this.selectedObject = intersects[1].object  as THREE.Mesh;
           }
           
