@@ -2,7 +2,7 @@
     <div class="col surface-container">
         <button *ngIf="!isEditingSurface" class="open-edit-surface-button" (click)="openSurfaceEdit()">Open edit</button>
         <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="!expandedShapeDetails" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
-        <app-place-shapes *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-place-shapes>
+        <app-place-shapes *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-place-shapes>
     </div>
     <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">

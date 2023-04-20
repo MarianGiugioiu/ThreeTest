@@ -19,7 +19,9 @@ export class PlaceShapesComponent implements OnInit {
 
   @Input() surface: IShape;
   @Input() parts: IShape[];
+  @Input() selectedPart: IShape;
   @Output() updateMinimizationEvent = new EventEmitter();
+  public bevelMeshes = {};
   public surfaceMesh: THREE.Mesh;
   public partMeshes: THREE.Mesh[] = [];
   private renderer: THREE.WebGLRenderer;
@@ -77,6 +79,10 @@ export class PlaceShapesComponent implements OnInit {
             this.scene.remove(child);
           }
         });
+        Object.keys(this.bevelMeshes).forEach(name => {
+          this.scene.remove(this.bevelMeshes[name]);
+          this.bevelMeshes[name] = undefined;
+        });
         
         //this.drawMesh(this.surface);
         this.partMeshes = [];
@@ -116,9 +122,10 @@ export class PlaceShapesComponent implements OnInit {
 
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
 
-    //this.drawMesh(this.surface);
-    this.parts.forEach(item => this.drawMesh(item));
-    
+    // this.drawMesh(this.surface);
+    this.parts.forEach(item => {
+      this.drawMesh(item);
+    });
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -128,9 +135,9 @@ export class PlaceShapesComponent implements OnInit {
       this.controls.update();
     });
     
-    // this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-    // this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-    // this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
 
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('keyup', this.onKeyUp.bind(this));
@@ -199,7 +206,7 @@ export class PlaceShapesComponent implements OnInit {
 
     shapeGeometry.closePath();
     
-    return new THREE.ShapeGeometry(shapeGeometry);
+    return shapeGeometry;
   }
 
 
@@ -212,82 +219,88 @@ export class PlaceShapesComponent implements OnInit {
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
     // Create a line from the geometry and material
-    let mesh = new THREE.Mesh(this.createShape(shape), material);
+    let shapeGeometry = this.createShape(shape);
+    var extrudeSettings = {
+      depth: 0,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      steps: 1,
+      bevelSize: 0.02,
+      bevelThickness: 1
+    };
+    let geometry = new THREE.ShapeGeometry(shapeGeometry);
+    let mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = 3;
     mesh.name = shape.name;
+    
     if (shape.id === 0) {
       this.surfaceMesh = mesh;
     } else {
       this.partMeshes.push(mesh);
     }
+    let bevelGeometry = new THREE.ExtrudeGeometry(shapeGeometry, extrudeSettings);
+    let bevelMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } );
+    let bevelMesh = new THREE.Mesh(bevelGeometry, bevelMaterial);
+    bevelMesh.position.z = 1;
+    bevelMesh.name = shape.name + '_bevel';
+    this.bevelMeshes[shape.name] = bevelMesh;
+    this.scene.add(bevelMesh);
     
+    if(shape.position) {
+      mesh.position.copy(shape.position);
+      bevelMesh.position.copy(new THREE.Vector3(mesh.position.x, mesh.position.y, 1))
+    }
     this.scene.add(mesh);
   }
 
-  // movePoint(position, obj: IPoint) {
-  //   obj.object.position.copy(position);
-    
-  //   obj.text.position.set(position.x + this.textOffset.x, position.y + this.textOffset.y, 0);
-  //   obj.point = new THREE.Vector2(position.x, position.y);
-    
-  //   const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
+  moveMesh(position: THREE.Vector3, mesh: THREE.Mesh) {
+    mesh.position.copy(position);
+    (this.bevelMeshes[mesh.name] as THREE.Mesh).position.copy(new THREE.Vector3(position.x, position.y, 1));
+    this.selectedPart.position = position;
+  }
 
-  //   if (!isVAlidShape) {
-  //     if (!this.mainObject.visible) {
-  //       this.mainObject.visible = true;
-  //     }
-  //     this.mainObject.geometry = this.createShape();
-  //   } else {
-  //     if (this.mainObject.visible) {
-  //       this.mainObject.visible = false;
-  //     }
-  //   }
-  // }
+  onMouseMove(event) {
+    this.mouse.x = ((event.clientX - this.canvas.offsetLeft ) / this.canvasWidth) * 2 - 1;
+    this.mouse.y = -((event.clientY - this.canvas.offsetTop) / this.canvasHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
 
-  // onMouseMove(event) {
-  //   this.mouse.x = ((event.clientX - this.canvas.offsetLeft ) / this.canvasWidth) * 2 - 1;
-  //   this.mouse.y = -((event.clientY - this.canvas.offsetTop) / this.canvasHeight) * 2 + 1;
-  //   this.raycaster.setFromCamera(this.mouse, this.camera);
-
-  //   if (this.dragging) {
-  //     this.raycaster.setFromCamera(this.mouse, this.camera);
+    if (this.dragging) {
+      this.raycaster.setFromCamera(this.mouse, this.camera);
       
-  //     const intersect = this.raycaster.intersectObject(this.selectedObject)[0];
-  //     if (intersect) {
-  //       const position = intersect.point.sub(this.startPosition);
-  //       this.movePoint(position, this.shape.points[+(this.selectedObject.name.replace('Point_', ''))]);
-  //     }
-  //   }
-  // };
+      const intersect = this.raycaster.intersectObject(this.selectedObject)[0];
+      if (intersect) {
+        const position = intersect.point.sub(this.startPosition);
+        this.moveMesh(position, this.selectedObject);
+      }
+    }
+  };
 
-  // onMouseDown(event) {
-  //   if (this.vertexVisibility) {
-  //     const intersects = this.raycaster.intersectObjects(this.scene.children);
+  onMouseDown(event) {
+    const intersects = this.raycaster.intersectObjects(this.scene.children);
+    
+    // change color of the closest object intersecting the raycaster
+    if (intersects.length > 0) {
+      this.selectedObject = intersects[0].object  as THREE.Mesh;
       
-  //     // change color of the closest object intersecting the raycaster
-  //     if (intersects.length > 0) {
-  //       this.selectedObject = intersects[0].object  as THREE.Mesh;
-        
-  //       if (intersects[0].object.name === 'main_object' && intersects[1] && this.vertexVisibility) {
-  //         this.selectedObject = intersects[1].object  as THREE.Mesh;
-  //       }
-        
-  //       if (this.selectedObject && this.selectedObject.name.includes('Point')) {
-  //         (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
-  //         this.dragging = true;
-  //         this.startPosition = intersects[0].point.sub(this.selectedObject.position);
-  //       }
-  //     }
-  //   } 
-  // };
+      if (this.selectedObject && this.selectedObject.name.includes('Part') && !this.selectedObject.name.includes('bevel')) {
+        // if (this.selectedObject.name.includes('bevel')) {
+        //   this.selectedObject = this.partMeshes.find(item => item.name === this.selectedObject.name.replace('_bevel', ''));
+        // }
+        this.selectedPart = this.parts.find(item => item.name === this.selectedObject.name);
+        // (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+        this.dragging = true;
+        this.startPosition = intersects[0].point.sub(this.selectedObject.position);
+      }
+    }
+  };
 
-  // onMouseUp(event) {
-  //   if (this.selectedObject && this.selectedObject.name.includes('Point')) {
-  //     (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
-  //     this.dragging = false;
-  //     this.selectedObject = undefined;
-  //     this.selectedAdjacentObject = undefined;
-  //   }
-  // };
+  onMouseUp(event) {
+    // (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
+    this.dragging = false;
+    this.selectedObject = undefined;
+    this.selectedPart = undefined;
+    
+  };
 
   onKeyUp(event: KeyboardEvent) {
     if (event.key === '+' || event.key === '-' || event.key === '\\') {

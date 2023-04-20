@@ -127,7 +127,9 @@ export class HomeComponent implements OnInit {
   }
 
   deleteShape(i: number) {
+    this.parts = this.parts.filter(item => item.id !== this.shapes[i].id);
     this.shapes.splice(i, 1);
+    this.generateSurfaceParts();
   }
 
   deletePart(i: number) {
@@ -162,6 +164,8 @@ export class HomeComponent implements OnInit {
   }
 
   generateSurfaceParts() {
+    let positions = {};
+    this.surfaceParts.forEach(item => positions[item.name] = item.position);
     this.surfaceParts = [];
     this.parts.forEach(part => {
       this.surfaceParts.push({
@@ -169,7 +173,8 @@ export class HomeComponent implements OnInit {
         id: part.id,
         name: part.name,
         textureType: part.textureType,
-        points: cloneDeep(part.points)
+        points: cloneDeep(part.points),
+        position: positions[part.name]
       });
     })
   };

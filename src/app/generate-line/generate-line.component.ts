@@ -320,20 +320,22 @@ export class GenerateLineComponent implements OnInit {
 
   getAngle(i) {
     const lastPos = this.shape.points.length - 1;
-    let point1 = this.shape.points[i].point;
+    let point1 = this.shape.points[i];
     let point2;
     let point3;
     if (i === 0) {
-      point2 = this.shape.points[lastPos].point;
-      point3 = this.shape.points[i + 1].point;
+      point2 = this.shape.points[lastPos];
+      point3 = this.shape.points[i + 1];
     } else if (i === lastPos) {
-      point2 = this.shape.points[i - 1].point;
-      point3 = this.shape.points[0].point;
+      point2 = this.shape.points[i - 1];
+      point3 = this.shape.points[0];
     } else {
-      point2 = this.shape.points[i - 1].point;
-      point3 = this.shape.points[i + 1].point;
+      point2 = this.shape.points[i - 1];
+      point3 = this.shape.points[i + 1];
     }
-    return this.geometryService.calculateAngle(point1, point2, point3).toFixed(2);
+    if (point1.type === 'line' && point2.type === 'line' && point3.type === 'line') {
+      return this.geometryService.calculateAngle(point1.point, point2.point, point3.point).toFixed(2);
+    }
   }
 
   getEdgeLength(i) {
@@ -624,7 +626,7 @@ export class GenerateLineComponent implements OnInit {
   };
 
   onKeyUp(event: KeyboardEvent) {
-    if (event.key === '+' || event.key === '-' || event.key === '\\') {
+    if (event.key === '+' || event.key === '-' || event.key === '/') {
       this.isKeyPressed = false;
     }
     const index = this.pressedKeys.indexOf(event.key);
@@ -636,23 +638,23 @@ export class GenerateLineComponent implements OnInit {
       this.pressedKeys.push(event.key);
     }
 
-    if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+    if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
       this.isKeyPressed = true;
       this.rotateMainObject(1);
     }
 
-    if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+    if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
       this.isKeyPressed = true;
       this.rotateMainObject(-1);
     }
 
-    if (this.pressedKeys.includes('/') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+    if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
       this.isKeyPressed = true;
       this.sign = 1;
       this.changeShapeDimension()
     }
 
-    if (this.pressedKeys.includes('/') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+    if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
       this.isKeyPressed = true;
       this.sign = -1;
       this.changeShapeDimension()
@@ -710,7 +712,7 @@ export class GenerateLineComponent implements OnInit {
       this.doubleChangeLength();
     }
 
-    if(this.pressedKeys.includes('[') && this.pressedKeys.includes('\\')) {
+    if(this.pressedKeys.includes('[') && this.pressedKeys.includes('/')) {
       if (this.selectedObject) {
         let [i,j,k] = this.getAdjacentPoints();
   
@@ -726,7 +728,7 @@ export class GenerateLineComponent implements OnInit {
       }
     }
 
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('\\')) {
+    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('/')) {
       if (this.selectedObject && this.selectedAdjacentObject) {
         let [i,j,k] = this.getAdjacentPoint();
         
