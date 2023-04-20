@@ -61,6 +61,7 @@ export class GenerateLineComponent implements OnInit {
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
   public textures = [];
+  public cameraRatio = 1;
 
   currentHeight;
   currentBh;
@@ -110,6 +111,11 @@ export class GenerateLineComponent implements OnInit {
       this.canvasWidth = 150;
       this.canvasHeight = 150;
       ratio = 2;
+    } else if (this.isSurface) {
+      this.cameraRatio = 4;
+      ratio = 4;
+      this.textOffset.x = this.textOffset.x * 4;
+      this.textOffset.y = this.textOffset.y * 4;
     }
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
@@ -404,7 +410,7 @@ export class GenerateLineComponent implements OnInit {
       item.object.name = `Point_${index.toString()}`;
       item.text.geometry = new TextGeometry(index.toString(), {
         font: this.font,
-        size: 0.15,
+        size: 0.15 * this.cameraRatio,
         height: 2,
         curveSegments: 10,
         bevelEnabled: false
@@ -461,10 +467,9 @@ export class GenerateLineComponent implements OnInit {
   }
 
   addText(position: THREE.Vector2, text: string) {
-    
     const textGeometry = new TextGeometry(text, {
       font: this.font,
-      size: 0.15,
+      size: 0.15 * this.cameraRatio,
       height: 2,
       curveSegments: 10,
       bevelEnabled: false
@@ -482,7 +487,7 @@ export class GenerateLineComponent implements OnInit {
   drawMainObject() {
     const texture = this.textures[this.shape.textureType];
     const material = new THREE.MeshBasicMaterial({ map: texture });
-    material.map.repeat.set(0.25, 0.25);
+    material.map.repeat.set(0.25 / this.cameraRatio, 0.25 / this.cameraRatio);
     material.map.offset.set(0.5, 0.5);
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
@@ -495,7 +500,7 @@ export class GenerateLineComponent implements OnInit {
   addPoint(position: THREE.Vector2, name, type = 'line') {
     let mesh;
     if(type === 'line') {
-      const squareGeometry = new THREE.BoxGeometry(0.2, 0.2, 1);
+      const squareGeometry = new THREE.BoxGeometry(0.2 * this.cameraRatio, 0.2 * this.cameraRatio, 1);
   
     // Create a material with white color
       const squareMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -503,7 +508,7 @@ export class GenerateLineComponent implements OnInit {
       // Create a mesh from the geometry and material
       mesh = new THREE.Mesh(squareGeometry, squareMaterial);
     } else {
-      const circleGeometry = new THREE.CircleGeometry(0.1, 32);
+      const circleGeometry = new THREE.CircleGeometry(0.1 * this.cameraRatio, 32);
   
     // Create a material with white color
       const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });

@@ -5,6 +5,7 @@ import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { GeometryService } from '../common/geometry.service';
 import { IPoint, IShape } from '../generate-line/generate-line.component';
+import { cloneDeep } from 'lodash';
 
 @Component({
   selector: 'app-place-shapes',
@@ -33,17 +34,15 @@ export class PlaceShapesComponent implements OnInit {
   private canvasHeight = 300;
   private dragging = false;
   public selectedObject: THREE.Mesh;
-  public selectedAdjacentObject: THREE.Mesh;
   private startPosition;
   private mouse: THREE.Vector2;
   private raycaster: THREE.Raycaster;
-  private font;
-  private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
   public vertexVisibility = false;
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
   public textures = [];
+  public cameraRatio = 4;
 
   currentHeight;
   currentBh;
@@ -79,12 +78,13 @@ export class PlaceShapesComponent implements OnInit {
             this.scene.remove(child);
           }
         });
+        this.scene.remove(this.surfaceMesh);
         Object.keys(this.bevelMeshes).forEach(name => {
           this.scene.remove(this.bevelMeshes[name]);
           this.bevelMeshes[name] = undefined;
         });
         
-        //this.drawMesh(this.surface);
+        this.drawMesh(this.surface);
         this.partMeshes = [];
         this.parts.forEach(item => this.drawMesh(item));
       } 
@@ -105,10 +105,10 @@ export class PlaceShapesComponent implements OnInit {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.camera = new THREE.OrthographicCamera(
-      this.canvasWidth / -200, // left
-      this.canvasWidth / 200, // right
-      this.canvasHeight / 200, // top
-      this.canvasHeight / -200, // bottom
+      this.canvasWidth / -200 * this.cameraRatio, // left
+      this.canvasWidth / 200 * this.cameraRatio, // right
+      this.canvasHeight / 200 * this.cameraRatio, // top
+      this.canvasHeight / -200 * this.cameraRatio, // bottom
       1, // near
       1000 // far
     );
@@ -120,12 +120,8 @@ export class PlaceShapesComponent implements OnInit {
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(this.ambientLight);
 
-    this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
-
-    // this.drawMesh(this.surface);
-    this.parts.forEach(item => {
-      this.drawMesh(item);
-    });
+    this.drawMesh(this.surface);
+    this.parts.forEach(item => this.drawMesh(item));
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -211,13 +207,18 @@ export class PlaceShapesComponent implements OnInit {
 
 
   drawMesh(shape: IShape) {
+    let isSurface = shape.name.includes('Surface');
+    
+    let localRatio = 4;
+    let localMaterial;
     const texture = this.textures[shape.textureType];
     // Create a material for the lines
     const material = new THREE.MeshBasicMaterial({ map: texture });
-    material.map.repeat.set(0.25, 0.25);
+    material.map.repeat.set(0.25 / localRatio, 0.25 / localRatio);
     material.map.offset.set(0.5, 0.5);
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
+    
     // Create a line from the geometry and material
     let shapeGeometry = this.createShape(shape);
     var extrudeSettings = {
@@ -225,14 +226,13 @@ export class PlaceShapesComponent implements OnInit {
       bevelEnabled: true,
       bevelSegments: 2,
       steps: 1,
-      bevelSize: 0.02,
+      bevelSize: 0.05,
       bevelThickness: 1
     };
     let geometry = new THREE.ShapeGeometry(shapeGeometry);
     let mesh = new THREE.Mesh(geometry, material);
-    mesh.position.z = 3;
+    mesh.position.z = 4;
     mesh.name = shape.name;
-    
     if (shape.id === 0) {
       this.surfaceMesh = mesh;
     } else {
@@ -241,21 +241,26 @@ export class PlaceShapesComponent implements OnInit {
     let bevelGeometry = new THREE.ExtrudeGeometry(shapeGeometry, extrudeSettings);
     let bevelMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } );
     let bevelMesh = new THREE.Mesh(bevelGeometry, bevelMaterial);
-    bevelMesh.position.z = 1;
+    bevelMesh.position.z = 2;
     bevelMesh.name = shape.name + '_bevel';
     this.bevelMeshes[shape.name] = bevelMesh;
     this.scene.add(bevelMesh);
     
     if(shape.position) {
       mesh.position.copy(shape.position);
-      bevelMesh.position.copy(new THREE.Vector3(mesh.position.x, mesh.position.y, 1))
+      bevelMesh.position.copy(new THREE.Vector3(mesh.position.x, mesh.position.y, 2))
+    }
+
+    if (isSurface) {
+      mesh.position.z = 2;
+      bevelMesh.position.z = 0;
     }
     this.scene.add(mesh);
   }
 
   moveMesh(position: THREE.Vector3, mesh: THREE.Mesh) {
     mesh.position.copy(position);
-    (this.bevelMeshes[mesh.name] as THREE.Mesh).position.copy(new THREE.Vector3(position.x, position.y, 1));
+    (this.bevelMeshes[mesh.name] as THREE.Mesh).position.copy(new THREE.Vector3(position.x, position.y, 2));
     this.selectedPart.position = position;
   }
 

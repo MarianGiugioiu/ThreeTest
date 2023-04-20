@@ -18,6 +18,7 @@ export class HomeComponent implements OnInit {
   public expandedShapeDetails: IShape;
   public selectedPart: IShape;
   public isEditingSurface = true;
+  public cameraRatio = 4;
 
   constructor(public generalService: GeneralService) { }
 
@@ -62,19 +63,19 @@ export class HomeComponent implements OnInit {
       textureType: 0,
       points:[
         {
-          point: new THREE.Vector2(-0.5, -0.5),
+          point: new THREE.Vector2(-0.5 * this.cameraRatio, -0.5 * this.cameraRatio),
           type: 'line'
         },
         {
-          point: new THREE.Vector2(-0.5, 0.5),
+          point: new THREE.Vector2(-0.5 * this.cameraRatio, 0.5 * this.cameraRatio),
           type: 'line'
         },
         {
-          point: new THREE.Vector2(0.5, 0.5),
+          point: new THREE.Vector2(0.5 * this.cameraRatio, 0.5 * this.cameraRatio),
           type: 'line'
         },
         {
-          point: new THREE.Vector2(0.5, -0.5),
+          point: new THREE.Vector2(0.5 * this.cameraRatio, -0.5 * this.cameraRatio),
           type: 'line'
         }
       ]
