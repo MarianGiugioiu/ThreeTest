@@ -21,6 +21,7 @@ export interface IShape {
   points?: IPoint[];
   wasInitialized?: boolean;
   position?: THREE.Vector3;
+  rotation?: number;
 }
 
 @Component({
@@ -145,9 +146,9 @@ export class GenerateLineComponent implements OnInit {
     
     this.createPrimaryShape();
     this.shape.wasInitialized = true;
+    this.shape.rotation = 0;
 
     if (!this.isPart) {
-
       this.resizeCanvas();
     }
     
@@ -168,6 +169,13 @@ export class GenerateLineComponent implements OnInit {
 
     window.addEventListener('resize', () => this.onWindowResize(), false);
     
+  }
+
+  save() {
+    if (!this.isSurface) {
+      this.rotateMainObjectWithValue(this.shape.rotation);
+    }
+    this.toggleMinimize();
   }
 
   toggleMinimize() {
@@ -202,6 +210,7 @@ export class GenerateLineComponent implements OnInit {
 
   rotateMainObject(sign) {
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
+    this.shape.rotation -= sign * this.mainObjectRotation;
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
     
     this.shape.points.map((item, index) => {
@@ -598,6 +607,7 @@ export class GenerateLineComponent implements OnInit {
 
   onMouseDown(event) {
     if (!this.isPart && this.isCanvasMinimized) {
+      this.rotateMainObjectWithValue(-this.shape.rotation);
       this.toggleMinimize();
     } else {
       if (this.vertexVisibility) {
