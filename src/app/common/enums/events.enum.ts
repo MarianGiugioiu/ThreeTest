@@ -1,3 +1,4 @@
 export enum EventsEnum {
-    toggleEditSurface = 'toggleEditSurface'
+    toggleEditSurface = 'toggleEditSurface',
+    partChanged = 'partChanged',
 };

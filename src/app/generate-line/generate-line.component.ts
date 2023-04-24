@@ -45,6 +45,7 @@ export class GenerateLineComponent implements OnInit {
   @Input() isPart;
   @Input() isSurface;
   @Output() updateMinimizationEvent = new EventEmitter();
+  @Output() updatePartRotationEvent = new EventEmitter();
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -119,6 +120,9 @@ export class GenerateLineComponent implements OnInit {
         }
       }
       
+      // if (propName === 'shape' && this.isPart && this.shape.rotation) {
+      //   this.rotateMainObjectWithValue(this.shape.rotation);
+      // }
     }
   }
 
@@ -169,10 +173,12 @@ export class GenerateLineComponent implements OnInit {
     this.createPrimaryShape();
     this.initialIteration = cloneDeep(this.shape.points);
     this.shape.wasInitialized = true;
-    this.shape.rotation = 0;
-
+    
     if (!this.isPart) {
       this.resizeCanvas();
+      this.shape.rotation = 0;
+    } else {
+      this.rotateMainObjectWithValue(-this.shape.rotation);
     }
     
     this.mouse = new THREE.Vector2();
@@ -292,6 +298,9 @@ export class GenerateLineComponent implements OnInit {
       this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
       item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
     });
+    if (this.isPart) {
+      this.updatePartRotationEvent.emit();
+    }
   }
 
   rotateMainObjectWithValue(value) {

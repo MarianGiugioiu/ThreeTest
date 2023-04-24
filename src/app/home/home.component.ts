@@ -21,6 +21,7 @@ export class HomeComponent implements OnInit {
   public selectedPart: IShape;
   public isEditingSurface = true;
   public cameraRatio = 4;
+  public updateFromShape = false;
 
   constructor(
     public generalService: GeneralService,
@@ -98,14 +99,17 @@ export class HomeComponent implements OnInit {
         this.parts = this.parts.map((item) => {
           const partId = item.partId;
           const partName = item.name;
+          const rotation = item.rotation;
           if (item.id === shape.id) {
             item = cloneDeep(shape);
             item.name = partName;
             item.wasInitialized = false;
             item.partId = partId;
+            item.rotation = rotation;
           }
           return item;
         });
+        this.updateFromShape = true;
         this.generateSurfaceParts();
       }
     } else {
@@ -124,11 +128,13 @@ export class HomeComponent implements OnInit {
 
   useShape(shape: IShape) {
     let part = cloneDeep(shape);
+    part.rotation = 0;
     part.name = this.createNewName('Part');
     part.partId = this.parts.length + 1;
     part.wasInitialized = false;
     this.selectedPart = part;
     this.parts.unshift(part);
+    this.updateFromShape = false;
     this.generateSurfaceParts();
     
   }
@@ -152,6 +158,11 @@ export class HomeComponent implements OnInit {
     }
   }
 
+  choosePartFromSurface(event: number) {
+    let part = this.parts.find(item => item.partId === event);
+    this.selectedPart = part;
+  }
+
   createNewName(type) {
     let list = this.shapes;
     if (type === 'Part') {
@@ -170,9 +181,19 @@ export class HomeComponent implements OnInit {
     let surfacePartIndex = this.surfaceParts.findIndex(item => item.partId === part.partId);
   }
 
+  updatePartRotation() {
+    this.updateFromShape = false;
+    this.generateSurfaceParts();
+  }
+
   generateSurfaceParts() {
     let positions = {};
+    let rotations = {};
     this.surfaceParts.forEach(item => positions[item.name] = item.position);
+    this.parts.forEach(item => {
+      rotations[item.name] = item.rotation;
+    });
+    
     this.surfaceParts = [];
     this.parts.forEach(part => {
       this.surfaceParts.push({
@@ -181,7 +202,8 @@ export class HomeComponent implements OnInit {
         name: part.name,
         textureType: part.textureType,
         points: cloneDeep(part.points),
-        position: positions[part.name]
+        position: positions[part.name],
+        rotation: rotations[part.name]
       });
     })
   };

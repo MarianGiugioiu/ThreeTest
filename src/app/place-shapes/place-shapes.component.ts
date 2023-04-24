@@ -6,6 +6,7 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { GeometryService } from '../common/services/geometry.service';
 import { IPoint, IShape } from '../generate-line/generate-line.component';
 import { cloneDeep } from 'lodash';
+import { EventsService } from '../common/services/events.service';
 
 @Component({
   selector: 'app-place-shapes',
@@ -21,7 +22,9 @@ export class PlaceShapesComponent implements OnInit {
   @Input() surface: IShape;
   @Input() parts: IShape[];
   @Input() selectedPart: IShape;
+  @Input() updateFromShape: boolean;
   @Output() updateMinimizationEvent = new EventEmitter();
+  @Output() choosePartEvent = new EventEmitter();
   public bevelMeshes = {};
   public surfaceMesh: THREE.Mesh;
   public partMeshes: THREE.Mesh[] = [];
@@ -60,7 +63,8 @@ export class PlaceShapesComponent implements OnInit {
   fontLoader: FontLoader
 
   constructor(
-    public geometryService: GeometryService
+    public geometryService: GeometryService,
+    public eventsService: EventsService
   ) { }
 
   ngOnInit(): void {
@@ -68,6 +72,7 @@ export class PlaceShapesComponent implements OnInit {
     this.fontLoader = new FontLoader();
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
     //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
+
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -153,16 +158,20 @@ export class PlaceShapesComponent implements OnInit {
   //   });
   // }
 
-  // rotateMainObjectWithValue(value) {
-  //   const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
-  //   this.mainObject.geometry.applyMatrix4(rotationMatrix);
+  rotateObjectWithValue(part: IShape) {
+    let value = -part.rotation;
+    const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
+    let mesh = this.partMeshes.find(item => item.name === part.name);
+    let bevelMesh = this.bevelMeshes[part.name];
+    mesh.geometry.applyMatrix4(rotationMatrix);
+    bevelMesh.geometry.applyMatrix4(rotationMatrix);
     
-  //   this.shape.points.map((item, index) => {
-  //     item.object.position.applyMatrix4(rotationMatrix);
-  //     this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
-  //     item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
-  //   });
-  // }
+    part.points.map((item, index) => {
+      let newPosition = new THREE.Vector3(item.point.x, item.point.y, mesh.position.z);
+      newPosition.applyMatrix4(rotationMatrix);
+      item.point = new THREE.Vector2(newPosition.x, newPosition.y);
+    });
+  }
 
   // destroyShape() {
   //   this.shape.points.forEach(item => {
@@ -210,7 +219,6 @@ export class PlaceShapesComponent implements OnInit {
     let isSurface = shape.name.includes('Surface');
     
     let localRatio = 4;
-    let localMaterial;
     const texture = this.textures[shape.textureType];
     // Create a material for the lines
     const material = new THREE.MeshBasicMaterial({ map: texture });
@@ -254,6 +262,10 @@ export class PlaceShapesComponent implements OnInit {
     if (isSurface) {
       mesh.position.z = 2;
       bevelMesh.position.z = 0;
+    } else {
+      if (this.updateFromShape) {
+        this.rotateObjectWithValue(shape);
+      }
     }
     this.scene.add(mesh);
   }
@@ -302,6 +314,7 @@ export class PlaceShapesComponent implements OnInit {
   onMouseUp(event) {
     // (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
     this.dragging = false;
+    this.choosePartEvent.emit(this.selectedPart.partId);
     this.selectedObject = undefined;
     this.selectedPart = undefined;
     
