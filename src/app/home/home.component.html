@@ -1,12 +1,12 @@
 <div class="row page-container">
     <div class="col surface-container">
         <button *ngIf="!isEditingSurface" class="open-edit-surface-button" (click)="openSurfaceEdit()">Open edit</button>
-        <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="!expandedShapeDetails" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
+        <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" [canRotate]="false" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
         <app-place-shapes *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-place-shapes>
     </div>
     <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">
-            <app-generate-line (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false"></app-generate-line>
+            <app-generate-line (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false" [canRotate]="selectedPart?.partId === part.partId"></app-generate-line>
             <button (click)="deletePart(i)">Delete</button>
             <label *ngIf="selectedPart?.partId === part.partId" >x</label>
         </div>
@@ -18,7 +18,7 @@
                 <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="useShape(shape)">Use</button>
                 <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="deleteShape(i)">Delete</button>
             </div>
-            <app-generate-line [shape]="shape" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="true" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
+            <app-generate-line [shape]="shape" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="(shape.id === expandedShapeDetails?.id)" [canRotate]="false" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
         </div>
     </div>
 </div>

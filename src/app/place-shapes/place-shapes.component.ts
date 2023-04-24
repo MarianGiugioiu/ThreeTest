@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
-import { GeometryService } from '../common/geometry.service';
+import { GeometryService } from '../common/services/geometry.service';
 import { IPoint, IShape } from '../generate-line/generate-line.component';
 import { cloneDeep } from 'lodash';
 

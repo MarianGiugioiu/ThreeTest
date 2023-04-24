@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
 import { cloneDeep } from 'lodash';
-import { GeneralService } from '../common/general.service';
+import { GeneralService } from '../common/services/general.service';
+import { EventsService } from '../common/services/events.service';
+import { EventsEnum } from '../common/enums/events.enum';
 
 @Component({
   selector: 'app-home',
@@ -20,7 +22,10 @@ export class HomeComponent implements OnInit {
   public isEditingSurface = true;
   public cameraRatio = 4;
 
-  constructor(public generalService: GeneralService) { }
+  constructor(
+    public generalService: GeneralService,
+    public evensService: EventsService
+    ) { }
 
   ngOnInit(): void {
     this.createSurface();
@@ -114,6 +119,7 @@ export class HomeComponent implements OnInit {
     this.isEditingSurface = true;
     this.shapes.forEach(item => item.wasInitialized = false);
     this.parts.forEach(item => item.wasInitialized = false);
+    this.evensService.publish(EventsEnum.toggleEditSurface);
   }
 
   useShape(shape: IShape) {

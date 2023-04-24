@@ -3,7 +3,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
-import { GeometryService } from '../common/geometry.service';
+import { GeometryService } from '../common/services/geometry.service';
+import { cloneDeep, isEqual } from 'lodash';
+import { EventsService } from '../common/services/events.service';
+import { EventsEnum } from '../common/enums/events.enum';
 
 export interface IPoint {
   name?: string;
@@ -38,6 +41,7 @@ export class GenerateLineComponent implements OnInit {
   @Input() shape: IShape;
   @Input() isCanvasMinimized;
   @Input() canDoActions;
+  @Input() canRotate;
   @Input() isPart;
   @Input() isSurface;
   @Output() updateMinimizationEvent = new EventEmitter();
@@ -63,6 +67,10 @@ export class GenerateLineComponent implements OnInit {
   public regularPolygonEdgesNumber: number = 4;
   public textures = [];
   public cameraRatio = 1;
+  initialIteration: IPoint[];
+  previousIterations: IPoint[][];
+  maxPreviousIterationsNumber = 50;
+  currentShapeDuringPointMove: IPoint[];
 
   currentHeight;
   currentBh;
@@ -80,7 +88,8 @@ export class GenerateLineComponent implements OnInit {
   fontLoader: FontLoader
 
   constructor(
-    public geometryService: GeometryService
+    public geometryService: GeometryService,
+    public eventsService: EventsService
   ) { }
 
   ngOnInit(): void {
@@ -88,6 +97,18 @@ export class GenerateLineComponent implements OnInit {
     this.fontLoader = new FontLoader();
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
     //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
+
+    let subscription = this.eventsService.subscribe(EventsEnum.toggleEditSurface, () => {
+      if(!this.isSurface) {
+        this.canDoActions = false;
+        this.canRotate = false;
+        if(!this.isPart && this.initialIteration) {
+          this.revertShape();
+        }
+      }
+
+      subscription.unsubscribe();
+    })
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -144,7 +165,9 @@ export class GenerateLineComponent implements OnInit {
 
     this.font = await this.fontLoader.loadAsync("assets/fonts/Roboto Medium_Regular.json");
     
+    this.previousIterations = [];
     this.createPrimaryShape();
+    this.initialIteration = cloneDeep(this.shape.points);
     this.shape.wasInitialized = true;
     this.shape.rotation = 0;
 
@@ -171,15 +194,65 @@ export class GenerateLineComponent implements OnInit {
     
   }
 
+  addIteration(shape?) {
+    if (this.previousIterations.length === this.maxPreviousIterationsNumber) {
+      this.previousIterations.shift();
+    }
+    if (shape) {
+      this.previousIterations.push(shape);
+    } else {
+      this.previousIterations.push(cloneDeep(this.shape.points));
+    }
+  }
+
+  undoAction() {
+    this.destroyShape();
+    let newShape = this.previousIterations.pop();
+    this.shape.points = cloneDeep(newShape);
+    
+    this.createPrimaryShape();
+  }
+
+  changesExist() {
+    if (!this.initialIteration) {
+      return false;
+    }
+
+    if (this.shape.points.length != this.initialIteration.length) {
+      return true;
+    }
+
+    for (let i = 0; i < this.shape.points.length; i++) {
+      if (!isEqual(this.shape.points[i].point, this.initialIteration[i].point)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  revertShape() {
+    this.previousIterations = [];
+    this.destroyShape();
+    this.shape.points = cloneDeep(this.initialIteration);
+    this.createPrimaryShape();
+  }
+
   save() {
     if (!this.isSurface) {
       this.rotateMainObjectWithValue(this.shape.rotation);
     }
+    
+    this.initialIteration = undefined;
+    this.previousIterations = [];
     this.toggleMinimize();
   }
 
   toggleMinimize() {
     this.isCanvasMinimized = !this.isCanvasMinimized;
+    if(this.shape.id === 0) {
+      this.canDoActions = !this.canDoActions;
+    }
     this.resizeCanvas();
     this.updateMinimizationEvent.emit(this.isCanvasMinimized);
   }
@@ -209,6 +282,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   rotateMainObject(sign) {
+    this.addIteration();
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
     this.shape.rotation -= sign * this.mainObjectRotation;
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
@@ -373,6 +447,7 @@ export class GenerateLineComponent implements OnInit {
 
   addVertex(type = 'line') {
     if (this.selectedObject && this.selectedAdjacentObject) {
+      this.addIteration();
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
       const lastPos = this.shape.points.length - 1;
@@ -403,6 +478,7 @@ export class GenerateLineComponent implements OnInit {
 
   removeVertex() {
     if (this.selectedObject && this.shape.points.length > 3) {
+      this.addIteration();
       let point = this.shape.points[+(this.selectedObject.name.replace('Point_', ''))];
       this.scene.remove(point.object);
       this.scene.remove(point.text);
@@ -430,7 +506,6 @@ export class GenerateLineComponent implements OnInit {
   createShape() {
     const shapeGeometry = new THREE.Shape();
     const lastPos = this.shape.points.length - 1;
-
     shapeGeometry.moveTo(this.shape.points[0].point.x, this.shape.points[0].point.y);
 
     for (let i = 1; i < this.shape.points.length; i++) {
@@ -462,6 +537,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   changeShapeDimension() {
+    this.addIteration();
     this.shape.points.forEach(elem => {
       let value = 1.01
       if (this.sign < 0) {
@@ -502,6 +578,17 @@ export class GenerateLineComponent implements OnInit {
     material.map.wrapT = THREE.RepeatWrapping;
     this.mainObject = new THREE.Mesh(this.createShape(), material);
     this.mainObject.name = this.shape.name;
+    const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
+
+    if (!isVAlidShape) {
+      if (!this.mainObject.visible) {
+        this.mainObject.visible = true;
+      }
+    } else {
+      if (this.mainObject.visible) {
+        this.mainObject.visible = false;
+      }
+    }
     
     this.scene.add(this.mainObject);
   }
@@ -555,7 +642,7 @@ export class GenerateLineComponent implements OnInit {
   updateLength(event) {
     const value = event.target.value;
     if (value && !isNaN(value) && value > 0) {
-      
+      this.addIteration();
       let i = +(this.selectedObject.name.replace('Point_', ''));
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
       const newPoint = this.geometryService.changeEdgeLength(this.shape.points[i].point, this.shape.points[j].point, value);
@@ -607,7 +694,10 @@ export class GenerateLineComponent implements OnInit {
 
   onMouseDown(event) {
     if (!this.isPart && this.isCanvasMinimized) {
+      this.previousIterations = [];
+      
       this.rotateMainObjectWithValue(-this.shape.rotation);
+      this.initialIteration = cloneDeep(this.shape.points);
       this.toggleMinimize();
     } else {
       if (this.vertexVisibility) {
@@ -622,6 +712,7 @@ export class GenerateLineComponent implements OnInit {
           }
           
           if (this.selectedObject && this.selectedObject.name.includes('Point')) {
+            this.currentShapeDuringPointMove = cloneDeep(this.shape.points);
             (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
             this.dragging = true;
             this.startPosition = intersects[0].point.sub(this.selectedObject.position);
@@ -634,6 +725,8 @@ export class GenerateLineComponent implements OnInit {
   onMouseUp(event) {
     if (this.selectedObject && this.selectedObject.name.includes('Point')) {
       (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
+      this.addIteration(this.currentShapeDuringPointMove);
+      this.currentShapeDuringPointMove = undefined;
       this.dragging = false;
       this.selectedObject = undefined;
       this.selectedAdjacentObject = undefined;
@@ -649,112 +742,121 @@ export class GenerateLineComponent implements OnInit {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (!this.pressedKeys.includes(event.key) && !this.isCanvasMinimized && this.canDoActions) {
+    if (!this.pressedKeys.includes(event.key) && (this.canDoActions || this.canRotate)) {
       this.pressedKeys.push(event.key);
     }
+    if(this.shape.id !== 0) {
 
-    if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.rotateMainObject(1);
     }
 
-    if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.rotateMainObject(-1);
-    }
-
-    if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.sign = 1;
-      this.changeShapeDimension()
-    }
-
-    if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.sign = -1;
-      this.changeShapeDimension()
-    }
-    
-    if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.sign = -1;
-      this.value = 0;
-      this.changeAngle();
-    }
-    if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.sign = 1;
-      this.value = 0;
-      this.changeAngle();
-    }
-
-    if (this.pressedKeys.includes('[') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.sign = -1;
-      this.value = 0;
-      this.doubleChangeAngle();
-    }
-    if (this.pressedKeys.includes('[') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.sign = 1;
-      this.value = 0;
-      this.doubleChangeAngle();
-    }
-
-    if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.sign = 1;
-      this.value = 0;
-      this.changeLength();
-    }
-    if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.sign = -1;
-      this.value = 0;
-      this.changeLength();
-    }
-
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-      this.isKeyPressed = true;
-      this.sign = 1;
-      this.value = 0;
-      this.doubleChangeLength();
-    }
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-      this.isKeyPressed = true;
-      this.sign = -1;
-      this.value = 0;
-      this.doubleChangeLength();
-    }
-
-    if(this.pressedKeys.includes('[') && this.pressedKeys.includes('/')) {
-      if (this.selectedObject) {
-        let [i,j,k] = this.getAdjacentPoints();
+    if (this.canDoActions || this.canRotate) {
+      if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.rotateMainObject(1);
+      }
   
-        if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
-          const newPoint = this.geometryService.movePointToMediatingLine(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
-          
-          this.shape.points[i].point = newPoint;
-          this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-          this.shape.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-          
-          this.mainObject.geometry = this.createShape();
-        }
+      if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.rotateMainObject(-1);
       }
     }
 
-    if (this.pressedKeys.includes(']') && this.pressedKeys.includes('/')) {
-      if (this.selectedObject && this.selectedAdjacentObject) {
-        let [i,j,k] = this.getAdjacentPoint();
-        
-        if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
-          const newPoint = this.geometryService.equalizeEdges(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
+    if (this.canDoActions) {
+      if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.sign = 1;
+        this.changeShapeDimension()
+      }
+  
+      if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.sign = -1;
+        this.changeShapeDimension()
+      }
+      
+      if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.sign = -1;
+        this.value = 0;
+        this.changeAngle();
+      }
+      if (this.pressedKeys.includes('[') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.sign = 1;
+        this.value = 0;
+        this.changeAngle();
+      }
+  
+      if (this.pressedKeys.includes('[') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.sign = -1;
+        this.value = 0;
+        this.doubleChangeAngle();
+      }
+      if (this.pressedKeys.includes('[') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.sign = 1;
+        this.value = 0;
+        this.doubleChangeAngle();
+      }
+  
+      if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.sign = 1;
+        this.value = 0;
+        this.changeLength();
+      }
+      if (this.pressedKeys.includes(']') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.sign = -1;
+        this.value = 0;
+        this.changeLength();
+      }
+  
+      if (this.pressedKeys.includes(']') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
+        this.isKeyPressed = true;
+        this.sign = 1;
+        this.value = 0;
+        this.doubleChangeLength();
+      }
+      if (this.pressedKeys.includes(']') && this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
+        this.isKeyPressed = true;
+        this.sign = -1;
+        this.value = 0;
+        this.doubleChangeLength();
+      }
+  
+      if(this.pressedKeys.includes('[') && this.pressedKeys.includes('/')) {
+        if (this.selectedObject) {
+          let [i,j,k] = this.getAdjacentPoints();
+    
+          if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
+            this.addIteration();
+            const newPoint = this.geometryService.movePointToMediatingLine(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
+            
+            this.shape.points[i].point = newPoint;
+            this.selectedObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+            this.shape.points[i].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+            
+            this.mainObject.geometry = this.createShape();
+          }
+        }
+      }
+  
+      if (this.pressedKeys.includes(']') && this.pressedKeys.includes('/')) {
+        if (this.selectedObject && this.selectedAdjacentObject) {
+          let [i,j,k] = this.getAdjacentPoint();
           
-          this.shape.points[j].point = newPoint;
-          this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
-          this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
-          
-          this.mainObject.geometry = this.createShape();
+          if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
+            this.addIteration();
+            const newPoint = this.geometryService.equalizeEdges(this.shape.points[i].point, this.shape.points[j].point, this.shape.points[k].point);
+            
+            this.shape.points[j].point = newPoint;
+            this.selectedAdjacentObject.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
+            this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
+            
+            this.mainObject.geometry = this.createShape();
+          }
         }
       }
     }
@@ -823,6 +925,7 @@ export class GenerateLineComponent implements OnInit {
         const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, newPoint, this.shape.points[k].point);
 
         if (crossProductSign !== 0 && newCrossProductSign === crossProductSign) {
+          this.addIteration();
           this.shape.points[j].point = newPoint;
           this.shape.points[j].object.position.copy(new THREE.Vector3(newPoint.x, newPoint.y, 0));
           this.shape.points[j].text.position.set(newPoint.x + this.textOffset.x, newPoint.y + this.textOffset.y, 0);
@@ -864,6 +967,7 @@ export class GenerateLineComponent implements OnInit {
         const newCrossProductSign = this.geometryService.getDirectionOfRotation(this.shape.points[i].point, newPointJ, newPointK);
 
         if (crossProductSign !== 0 &&  newCrossProductSign === crossProductSign) {
+          this.addIteration();
           this.shape.points[j].point = newPointJ;
           this.shape.points[j].object.position.copy(new THREE.Vector3(newPointJ.x, newPointJ.y, 0));
           this.shape.points[j].text.position.set(newPointJ.x + this.textOffset.x, newPointJ.y + this.textOffset.y, 0);
@@ -898,6 +1002,7 @@ export class GenerateLineComponent implements OnInit {
       let [i,j,k] = this.getAdjacentPoints();
       
       if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line' && this.shape.points[k].type === 'line') {
+        this.addIteration();
         this.value += this.sign * 0.01;
         let newPoint = this.geometryService.addToEdgeLength(this.shape.points[i].point, this.shape.points[j].point, this.value);
         this.shape.points[j].point = newPoint;
@@ -926,6 +1031,7 @@ export class GenerateLineComponent implements OnInit {
       let j = +(this.selectedAdjacentObject.name.replace('Point_', ''));
 
       if (this.shape.points[i].type === 'line' && this.shape.points[j].type === 'line') {
+        this.addIteration();
         const newPoint = this.geometryService.addToEdgeLength(this.shape.points[i].point, this.shape.points[j].point, this.value);
         
         this.shape.points[j].point = newPoint;

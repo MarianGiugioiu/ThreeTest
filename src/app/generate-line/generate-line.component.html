@@ -33,6 +33,8 @@
                 </div>
                 <div class="row action-container">
                     <button (click)="save()">Save</button>
+                    <button *ngIf="previousIterations && previousIterations.length" (click)="undoAction()">Undo</button>
+                    <button *ngIf="changesExist()" (click)="revertShape()">Revert shape</button>
                 </div>
             </div>
         </div>
