@@ -107,6 +107,7 @@ export class HomeComponent implements OnInit {
             item.partId = partId;
             item.rotation = rotation;
           }
+          this.rotatePart(item, -rotation);
           return item;
         });
         this.updateFromShape = true;
@@ -117,12 +118,25 @@ export class HomeComponent implements OnInit {
     }
   }
 
+  rotatePart(part: IShape, value: number) {
+    const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
+    
+    part.points.map((item, index) => {
+      item.object.position.applyMatrix4(rotationMatrix);
+      part.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+    });
+  }
+
   openSurfaceEdit() {
     this.expandedShapeDetails = undefined;
     this.selectedPart = undefined;
     this.isEditingSurface = true;
     this.shapes.forEach(item => item.wasInitialized = false);
     this.parts.forEach(item => item.wasInitialized = false);
+    this.parts.forEach(item => {
+      console.log(item.rotation);
+      
+    })
     this.evensService.publish(EventsEnum.toggleEditSurface);
   }
 

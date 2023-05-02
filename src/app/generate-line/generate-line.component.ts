@@ -178,7 +178,7 @@ export class GenerateLineComponent implements OnInit {
       this.resizeCanvas();
       this.shape.rotation = 0;
     } else {
-      this.rotateMainObjectWithValue(-this.shape.rotation);
+      // this.rotateMainObjectWithValue(-this.shape.rotation);
     }
     
     this.mouse = new THREE.Vector2();

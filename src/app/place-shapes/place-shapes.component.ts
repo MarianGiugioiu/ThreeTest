@@ -91,7 +91,11 @@ export class PlaceShapesComponent implements OnInit {
         
         this.drawMesh(this.surface);
         this.partMeshes = [];
-        this.parts.forEach(item => this.drawMesh(item));
+        this.parts.reverse().forEach(item => this.drawMesh(item));
+        if (this.selectedPart) {
+          let mesh = this.partMeshes.find(item => item.name === this.selectedPart.name);
+          this.checkMeshIntersects(mesh, true);
+        }
       } 
     }
   }
@@ -126,8 +130,12 @@ export class PlaceShapesComponent implements OnInit {
     this.scene.add(this.ambientLight);
 
     this.drawMesh(this.surface);
-    this.parts.forEach(item => this.drawMesh(item));
-    
+    this.parts.reverse().forEach(item => this.drawMesh(item));
+    if (this.selectedPart) {
+      let mesh = this.partMeshes.find(item => item.name === this.selectedPart.name);
+      this.checkMeshIntersects(mesh, true);
+    }
+
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     
@@ -147,16 +155,50 @@ export class PlaceShapesComponent implements OnInit {
     
   }
 
-  // rotateMainObject(sign) {
-  //   const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
-  //   this.mainObject.geometry.applyMatrix4(rotationMatrix);
+  checkMeshIntersects(mesh: THREE.Mesh, firstTime = false) {
+    let otherMeshes = this.partMeshes.filter(item => {
+      return item.name !== mesh.name;
+    });
+    let bevelMesh = this.bevelMeshes[mesh.name];
+
+    let positionArray = mesh.geometry.attributes.position.array;
     
-  //   this.shape.points.map((item, index) => {
-  //     item.object.position.applyMatrix4(rotationMatrix);
-  //     this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
-  //     item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
-  //   });
-  // }
+    let vertices: THREE.Vector3[] = [];
+    const matrix = mesh.matrixWorld;
+    
+    for (var i = 0; i < positionArray.length; i += 3) {
+      var vertex = new THREE.Vector3(
+        positionArray[i],
+        positionArray[i + 1],
+        positionArray[i + 2]
+      );
+      if (!firstTime) {
+        vertex.applyMatrix4(matrix);
+      }
+      vertices.push(vertex);
+    }
+    
+    const raycaster1 = new THREE.Raycaster();
+    if (otherMeshes.length) {
+      let found = false;
+      for (let vertex of vertices) {
+        const direction = new THREE.Vector3(0, 0, -1);
+        raycaster1.set(new THREE.Vector3(vertex.x, vertex.y, 5), direction);
+        const intersects = raycaster1.intersectObjects(this.scene.children);
+        intersects.forEach(item => {
+          if (!item.object.name.includes("Surface") && !item.object.name.includes(mesh.name)) {
+            found = true;
+          }
+        });
+        
+      }
+      if (found) {
+        (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000);  
+      } else {
+        (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+      }
+    }
+  }
 
   rotateObjectWithValue(part: IShape) {
     let value = -part.rotation;
@@ -173,13 +215,7 @@ export class PlaceShapesComponent implements OnInit {
     });
   }
 
-  // destroyShape() {
-  //   this.shape.points.forEach(item => {
-  //     this.scene.remove(item.object);
-  //     this.scene.remove(item.text);
-  //   });
-  //   this.scene.remove(this.mainObject);
-  // }
+  
 
   createShape(shape: IShape) {
     const shapeGeometry = new THREE.Shape();
@@ -264,7 +300,7 @@ export class PlaceShapesComponent implements OnInit {
       bevelMesh.position.z = 0;
     } else {
       if (this.updateFromShape) {
-        this.rotateObjectWithValue(shape);
+        // this.rotateObjectWithValue(shape);
       }
     }
     this.scene.add(mesh);
@@ -274,6 +310,7 @@ export class PlaceShapesComponent implements OnInit {
     mesh.position.copy(position);
     (this.bevelMeshes[mesh.name] as THREE.Mesh).position.copy(new THREE.Vector3(position.x, position.y, 2));
     this.selectedPart.position = position;
+    this.checkMeshIntersects(mesh);
   }
 
   onMouseMove(event) {
@@ -332,16 +369,6 @@ export class PlaceShapesComponent implements OnInit {
     if (!this.pressedKeys.includes(event.key)) {
       this.pressedKeys.push(event.key);
     }
-
-    // if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
-    //   this.isKeyPressed = true;
-    //   this.rotateMainObject(1);
-    // }
-
-    // if (this.pressedKeys.includes('/') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('-')) {
-    //   this.isKeyPressed = true;
-    //   this.rotateMainObject(-1);
-    // }
   }
 
   onWindowResize() {
