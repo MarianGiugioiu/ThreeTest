@@ -92,9 +92,9 @@ export class PlaceShapesComponent implements OnInit {
         this.drawMesh(this.surface);
         this.partMeshes = [];
         this.parts.reverse().forEach(item => this.drawMesh(item));
-        if (this.selectedPart) {
+        if (this.partMeshes.length && this.selectedPart) {
           let mesh = this.partMeshes.find(item => item.name === this.selectedPart.name);
-          this.checkMeshIntersects(mesh, true);
+          this.checkMeshIntersects(mesh);
         }
       } 
     }
@@ -131,9 +131,9 @@ export class PlaceShapesComponent implements OnInit {
 
     this.drawMesh(this.surface);
     this.parts.reverse().forEach(item => this.drawMesh(item));
-    if (this.selectedPart) {
+    if (this.partMeshes.length && this.selectedPart) {
       let mesh = this.partMeshes.find(item => item.name === this.selectedPart.name);
-      this.checkMeshIntersects(mesh, true);
+      this.checkMeshIntersects(mesh);
     }
 
     this.mouse = new THREE.Vector2();
@@ -155,12 +155,7 @@ export class PlaceShapesComponent implements OnInit {
     
   }
 
-  checkMeshIntersects(mesh: THREE.Mesh, firstTime = false) {
-    let otherMeshes = this.partMeshes.filter(item => {
-      return item.name !== mesh.name;
-    });
-    let bevelMesh = this.bevelMeshes[mesh.name];
-
+  getVertices(mesh: THREE.Mesh) {
     let positionArray = mesh.geometry.attributes.position.array;
     
     let vertices: THREE.Vector3[] = [];
@@ -172,33 +167,108 @@ export class PlaceShapesComponent implements OnInit {
         positionArray[i + 1],
         positionArray[i + 2]
       );
-      if (!firstTime) {
-        vertex.applyMatrix4(matrix);
-      }
+      vertex.applyMatrix4(matrix);
       vertices.push(vertex);
     }
+    return vertices
+  }
+
+  getMarginVertices() {
+
+  }
+
+  checkMeshIntersects(mesh: THREE.Mesh) {
+    let bevelMesh = this.bevelMeshes[mesh.name];
+    let vertices = this.getVertices(mesh);
     
     const raycaster1 = new THREE.Raycaster();
-    if (otherMeshes.length) {
-      let found = false;
-      for (let vertex of vertices) {
-        const direction = new THREE.Vector3(0, 0, -1);
-        raycaster1.set(new THREE.Vector3(vertex.x, vertex.y, 5), direction);
-        const intersects = raycaster1.intersectObjects(this.scene.children);
-        intersects.forEach(item => {
-          if (!item.object.name.includes("Surface") && !item.object.name.includes(mesh.name)) {
-            found = true;
-          }
-        });
-        
-      }
-      if (found) {
-        (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000);  
-      } else {
-        (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+    let existsSurface = false;
+    for (let vertex of vertices) {
+      const direction = new THREE.Vector3(0, 0, -1);
+      raycaster1.set(new THREE.Vector3(vertex.x, vertex.y, 5), direction);
+      const intersect = raycaster1.intersectObject(this.surfaceMesh)[0];
+      if (!intersect) {
+        existsSurface = true;
       }
     }
+    if (existsSurface) {
+      (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000);  
+    } else {
+      (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+    }
+
+    //Lista de interstii pt fiecare (map) in true push in ambele, in false splice
+    let verticesList = this.partMeshes.map(item => this.getVertices(item));
+    const len = this.partMeshes.length;
+    for(let i = 0; i < len - 1; i++) {
+      for(let j = i + 1; j < len; j++) {
+        let result = this.geometryService.doPolygonsIntersect(verticesList[i], verticesList[j]);
+        let bevelMesh1 = this.bevelMeshes[this.partMeshes[i].name];
+        let bevelMesh2 = this.bevelMeshes[this.partMeshes[j].name];
+        if (result) {
+          (bevelMesh1.material as THREE.MeshPhongMaterial).color.set(0xff0000); 
+          (bevelMesh2.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+        } else {
+          if (bevelMesh1.name !== bevelMesh.name || !existsSurface) {
+            (bevelMesh1.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+          }
+          if (bevelMesh2.name !== bevelMesh.name || !existsSurface) {
+            (bevelMesh2.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+          }
+        }
+      }
+    }
+
+    
   }
+
+  // checkMeshIntersects(mesh: THREE.Mesh, firstTime = false) {
+  //   let otherMeshes = this.partMeshes.filter(item => {
+  //     return item.name !== mesh.name;
+  //   });
+  //   let bevelMesh = this.bevelMeshes[mesh.name];
+
+  //   let positionArray = mesh.geometry.attributes.position.array;
+    
+  //   let vertices: THREE.Vector3[] = [];
+  //   const matrix = mesh.matrixWorld;
+    
+  //   for (var i = 0; i < positionArray.length; i += 3) {
+  //     var vertex = new THREE.Vector3(
+  //       positionArray[i],
+  //       positionArray[i + 1],
+  //       positionArray[i + 2]
+  //     );
+  //     if (!firstTime) {
+  //       vertex.applyMatrix4(matrix);
+  //     }
+  //     vertices.push(vertex);
+  //   }
+
+  //   console.log(vertices);
+    
+    
+  //   const raycaster1 = new THREE.Raycaster();
+  //   if (otherMeshes.length) {
+  //     let found = false;
+  //     for (let vertex of vertices) {
+  //       const direction = new THREE.Vector3(0, 0, -1);
+  //       raycaster1.set(new THREE.Vector3(vertex.x, vertex.y, 5), direction);
+  //       const intersects = raycaster1.intersectObjects(this.scene.children);
+  //       intersects.forEach(item => {
+  //         if (!item.object.name.includes("Surface") && !item.object.name.includes(mesh.name)) {
+  //           found = true;
+  //         }
+  //       });
+        
+  //     }
+  //     if (found) {
+  //       (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000);  
+  //     } else {
+  //       (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+  //     }
+  //   }
+  // }
 
   rotateObjectWithValue(part: IShape) {
     let value = -part.rotation;

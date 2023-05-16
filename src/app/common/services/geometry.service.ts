@@ -45,6 +45,7 @@ export class GeometryService {
     }
     return false;
   }
+
   doEdgesIntersect(p1: THREE.Vector2, q1: THREE.Vector2, p2: THREE.Vector2, q2: THREE.Vector2) {
     const dx1 = q1.x - p1.x;
     const dy1 = q1.y - p1.y;
@@ -55,6 +56,23 @@ export class GeometryService {
     const cp3 = dx2 * (q1.y - p2.y) - dy2 * (q1.x - p2.x);
     const cp4 = dx2 * (p1.y - p2.y) - dy2 * (p1.x - p2.x);
     return (cp1 * cp2 < 0) && (cp3 * cp4 < 0);
+  }
+
+  doPolygonsIntersect(points1: THREE.Vector3[], points2: THREE.Vector3[]) {
+    const numPoints1 = points1.length;
+    const numPoints2 = points2.length;
+    for (let i = 0; i < numPoints1; i++) {
+        const p1 = new THREE.Vector2(points1[i].x, points1[i].y);
+        const q1 = new THREE.Vector2(points1[(i + 1) % numPoints1].x, points1[(i + 1) % numPoints1].y);
+        for (let j = 0; j < numPoints2; j++) {
+            const p2 = new THREE.Vector2(points2[j].x, points2[j].y);
+            const q2 = new THREE.Vector2(points2[(j + 1) % numPoints2].x, points2[(j + 1) % numPoints2].y);
+            if (this.doEdgesIntersect(p1, q1, p2, q2)) {
+                return true;
+            }
+        }
+    }
+    return false;
   }
 
   equalizeEdges(point1: THREE.Vector2, point2: THREE.Vector2, point3: THREE.Vector2) {
@@ -145,5 +163,14 @@ export class GeometryService {
       crossProductSign = crossProduct.z / Math.abs(crossProduct.z);
     }
     return crossProductSign;
+  }
+
+  arePointsOnOppositeSides(firstPoint: THREE.Vector3, secondPoint: THREE.Vector3, thirdPoint: THREE.Vector3, fourthPoint: THREE.Vector3) {
+    let vectorA = new THREE.Vector3().subVectors(fourthPoint, thirdPoint);
+    let vectorB = new THREE.Vector3().subVectors(fourthPoint, secondPoint);
+    let crossProduct = new THREE.Vector3().crossVectors(vectorA, vectorB);
+    let vectorC = new THREE.Vector3().subVectors(secondPoint, firstPoint);
+    let dotProduct = vectorC.dot(crossProduct);
+    return dotProduct <= 0;
   }
 }
