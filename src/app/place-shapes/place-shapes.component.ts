@@ -196,79 +196,39 @@ export class PlaceShapesComponent implements OnInit {
     } else {
       (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
     }
-
-    //Lista de interstii pt fiecare (map) in true push in ambele, in false splice
-    let verticesList = this.partMeshes.map(item => this.getVertices(item));
+    
     const len = this.partMeshes.length;
+    let intersections = {};
+    let verticesList = this.partMeshes.map(item => this.getVertices(item));
+
+    for(let i = 0; i < len; i++) {
+      intersections[this.partMeshes[i].name] = [];
+    }
+      
     for(let i = 0; i < len - 1; i++) {
       for(let j = i + 1; j < len; j++) {
         let result = this.geometryService.doPolygonsIntersect(verticesList[i], verticesList[j]);
-        let bevelMesh1 = this.bevelMeshes[this.partMeshes[i].name];
-        let bevelMesh2 = this.bevelMeshes[this.partMeshes[j].name];
         if (result) {
-          (bevelMesh1.material as THREE.MeshPhongMaterial).color.set(0xff0000); 
-          (bevelMesh2.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+          intersections[this.partMeshes[i].name].push(this.partMeshes[j].name);
+          intersections[this.partMeshes[j].name].push(this.partMeshes[i].name);
         } else {
-          if (bevelMesh1.name !== bevelMesh.name || !existsSurface) {
-            (bevelMesh1.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
-          }
-          if (bevelMesh2.name !== bevelMesh.name || !existsSurface) {
-            (bevelMesh2.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
-          }
+          intersections[this.partMeshes[i].name] = intersections[this.partMeshes[i].name].filter(item => item !== this.partMeshes[j].name);
+          intersections[this.partMeshes[j].name] = intersections[this.partMeshes[j].name].filter(item => item !== this.partMeshes[i].name);
         }
       }
     }
-
-    
+    for(let i = 0; i < len; i++) {
+      const intLen = intersections[this.partMeshes[i].name].length;
+      let intBevelMesh = this.bevelMeshes[this.partMeshes[i].name];
+      if (intLen) {
+        (intBevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000); 
+      } else {
+        if (intBevelMesh.name !== bevelMesh.name || !existsSurface) {
+          (intBevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
+        }
+      }
+    }
   }
-
-  // checkMeshIntersects(mesh: THREE.Mesh, firstTime = false) {
-  //   let otherMeshes = this.partMeshes.filter(item => {
-  //     return item.name !== mesh.name;
-  //   });
-  //   let bevelMesh = this.bevelMeshes[mesh.name];
-
-  //   let positionArray = mesh.geometry.attributes.position.array;
-    
-  //   let vertices: THREE.Vector3[] = [];
-  //   const matrix = mesh.matrixWorld;
-    
-  //   for (var i = 0; i < positionArray.length; i += 3) {
-  //     var vertex = new THREE.Vector3(
-  //       positionArray[i],
-  //       positionArray[i + 1],
-  //       positionArray[i + 2]
-  //     );
-  //     if (!firstTime) {
-  //       vertex.applyMatrix4(matrix);
-  //     }
-  //     vertices.push(vertex);
-  //   }
-
-  //   console.log(vertices);
-    
-    
-  //   const raycaster1 = new THREE.Raycaster();
-  //   if (otherMeshes.length) {
-  //     let found = false;
-  //     for (let vertex of vertices) {
-  //       const direction = new THREE.Vector3(0, 0, -1);
-  //       raycaster1.set(new THREE.Vector3(vertex.x, vertex.y, 5), direction);
-  //       const intersects = raycaster1.intersectObjects(this.scene.children);
-  //       intersects.forEach(item => {
-  //         if (!item.object.name.includes("Surface") && !item.object.name.includes(mesh.name)) {
-  //           found = true;
-  //         }
-  //       });
-        
-  //     }
-  //     if (found) {
-  //       (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xff0000);  
-  //     } else {
-  //       (bevelMesh.material as THREE.MeshPhongMaterial).color.set(0xffffff); 
-  //     }
-  //   }
-  // }
 
   rotateObjectWithValue(part: IShape) {
     let value = -part.rotation;
