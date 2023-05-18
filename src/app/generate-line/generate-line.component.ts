@@ -25,6 +25,7 @@ export interface IShape {
   wasInitialized?: boolean;
   position?: THREE.Vector3;
   rotation?: number;
+  image?: string;
 }
 
 @Component({
@@ -35,7 +36,7 @@ export interface IShape {
 export class GenerateLineComponent implements OnInit {
   @ViewChild('canvas') private canvasRef: ElementRef;
   private get canvas(): HTMLCanvasElement {
-    return this.canvasRef.nativeElement;
+    return this.canvasRef?.nativeElement;
   }
 
   @Input() shape: IShape;
@@ -44,8 +45,10 @@ export class GenerateLineComponent implements OnInit {
   @Input() canRotate;
   @Input() isPart;
   @Input() isSurface;
+  @Input() getImageData;
   @Output() updateMinimizationEvent = new EventEmitter();
   @Output() updatePartRotationEvent = new EventEmitter();
+  @Output() updateGetImageDataEvent = new EventEmitter();
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   //private camera: THREE.PerspectiveCamera;
@@ -63,7 +66,7 @@ export class GenerateLineComponent implements OnInit {
   private font;
   private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
-  public vertexVisibility = false;
+  public vertexVisibility = true;
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
   public textures = [];
@@ -72,6 +75,8 @@ export class GenerateLineComponent implements OnInit {
   previousIterations: IPoint[][];
   maxPreviousIterationsNumber = 50;
   currentShapeDuringPointMove: IPoint[];
+
+  getImageData1 = false;
 
   currentHeight;
   currentBh;
@@ -85,8 +90,15 @@ export class GenerateLineComponent implements OnInit {
   public isKeyPressed = false;
   sign = -1;
 
+
   textureLoader: THREE.TextureLoader;
   fontLoader: FontLoader
+
+  onMouseDownListener: EventListener;
+  onMouseUpListener: EventListener;
+  onMouseMoveListener: EventListener;
+  onKeyDownListener: EventListener;
+  onKeyUpListener: EventListener;
 
   constructor(
     public geometryService: GeometryService,
@@ -99,31 +111,14 @@ export class GenerateLineComponent implements OnInit {
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
     //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
 
-    let subscription = this.eventsService.subscribe(EventsEnum.toggleEditSurface, () => {
-      if(!this.isSurface) {
-        this.canDoActions = false;
-        this.canRotate = false;
-        if(!this.isPart && this.initialIteration) {
-          this.revertShape();
-        }
-      }
-
-      subscription.unsubscribe();
-    })
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    for (let propName in changes) {
-      if (propName === 'isCanvasMinimized') {
-        if (this.shape.wasInitialized) {
-          this.resizeCanvas();
-        }
-      }
-      
-      // if (propName === 'shape' && this.isPart && this.shape.rotation) {
-      //   this.rotateMainObjectWithValue(this.shape.rotation);
-      // }
-    }
+  async ngOnChanges(changes: SimpleChanges) {
+    // for (let propName in changes) {
+    //   if (propName === 'isCanvasMinimized') {
+        
+    //   }
+    // }
   }
 
   ngOnDistroy() {
@@ -171,33 +166,66 @@ export class GenerateLineComponent implements OnInit {
     
     this.previousIterations = [];
     this.createPrimaryShape();
-    this.initialIteration = cloneDeep(this.shape.points);
-    this.shape.wasInitialized = true;
     
-    if (!this.isPart) {
-      this.resizeCanvas();
-      this.shape.rotation = 0;
+    
+    if (!this.isPart && !this.isSurface) {
+      if (this.shape.rotation) {
+        this.rotateMainObjectWithValue(-this.shape.rotation);
+      }
     } else {
-      // this.rotateMainObjectWithValue(-this.shape.rotation);
+      
+    }
+
+    this.initialIteration = cloneDeep(this.shape.points);
+
+    if (!this.shape.wasInitialized) {
+      this.shape.rotation = 0;
     }
     
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
+
+    this.onMouseDownListener = this.onMouseDown.bind(this);
+    this.onMouseUpListener = this.onMouseUp.bind(this);
+    this.onMouseMoveListener = this.onMouseMove.bind(this);
+    this.onKeyDownListener = this.onKeyDown.bind(this);
+    this.onKeyUpListener = this.onKeyUp.bind(this);
     
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
       this.controls.update();
+      if (!this.isSurface) {
+        if (this.getImageData) {
+          this.toggleVerticesVisibility(false);
+          this.getImageData1 = true;
+          this.getImageData = false;
+        } else {
+          if (this.getImageData1) {
+            this.getImageData1 = false;
+            this.shape.image = this.renderer.domElement.toDataURL("image/png");
+            this.canvas.removeEventListener('mousemove', this.onMouseMoveListener);
+            this.canvas.removeEventListener('mousedown', this.onMouseDownListener);
+            this.canvas.removeEventListener('mouseup', this.onMouseUpListener);
+  
+            document.removeEventListener('keydown', this.onKeyDownListener);
+            document.removeEventListener('keyup', this.onKeyUpListener);
+  
+            this.renderer.dispose()
+            this.renderer.forceContextLoss();
+            this.updateGetImageDataEvent.emit();
+          }
+        }
+      }
     });
     
-    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+    this.canvas.addEventListener('mousemove', this.onMouseMoveListener);
+    this.canvas.addEventListener('mousedown', this.onMouseDownListener);
+    this.canvas.addEventListener('mouseup', this.onMouseUpListener);
 
-    document.addEventListener('keydown', this.onKeyDown.bind(this));
-    document.addEventListener('keyup', this.onKeyUp.bind(this));
+    document.addEventListener('keydown', this.onKeyDownListener);
+    document.addEventListener('keyup', this.onKeyUpListener);
 
-    window.addEventListener('resize', () => this.onWindowResize(), false);
-    
+    this.shape.wasInitialized = true;
   }
 
   addIteration(shape?) {
@@ -224,9 +252,10 @@ export class GenerateLineComponent implements OnInit {
       return false;
     }
 
-    if (this.shape.points.length != this.initialIteration.length) {
+    if (this.shape.points.length !== this.initialIteration.length) {
       return true;
     }
+
 
     for (let i = 0; i < this.shape.points.length; i++) {
       if (!isEqual(this.shape.points[i].point, this.initialIteration[i].point)) {
@@ -251,6 +280,7 @@ export class GenerateLineComponent implements OnInit {
     
     this.initialIteration = undefined;
     this.previousIterations = [];
+    this.getImageData = true;
     this.toggleMinimize();
   }
 
@@ -259,24 +289,7 @@ export class GenerateLineComponent implements OnInit {
     if(this.shape.id === 0) {
       this.canDoActions = !this.canDoActions;
     }
-    this.resizeCanvas();
     this.updateMinimizationEvent.emit(this.isCanvasMinimized);
-  }
-
-  resizeCanvas() {
-    if (this.isCanvasMinimized) {
-      this.canvasWidth = 150;
-      this.canvasHeight = 150;
-    } else {
-      this.canvasWidth = 300;
-      this.canvasHeight = 300;
-    }
-    this.canvas.width = this.canvasWidth;
-    this.canvas.height = this.canvasHeight;
-    this.renderer.setSize(this.canvasWidth, this.canvasHeight);
-    this.selectedObject = undefined;
-    this.selectedAdjacentObject = undefined;
-    this.toggleVerticesVisibility(!this.isCanvasMinimized);
   }
 
   toggleVerticesVisibility(value?) {
@@ -289,8 +302,10 @@ export class GenerateLineComponent implements OnInit {
 
   rotateMainObject(sign) {
     this.addIteration();
+    
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
     this.shape.rotation -= sign * this.mainObjectRotation;
+    
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
     
     this.shape.points.map((item, index) => {
@@ -331,6 +346,12 @@ export class GenerateLineComponent implements OnInit {
       item.text = this.addText(item.point ,index.toString());
       item.text.visible = this.vertexVisibility;
     });
+    if (this.selectedObject) {
+      this.selectedObject = this.shape.points.find(item => item.object.name === this.selectedObject.name)?.object;
+    }
+    if (this.selectedAdjacentObject) {
+      this.selectedAdjacentObject = this.shape.points.find(item => item.object.name === this.selectedAdjacentObject.name)?.object;
+    }
   }
 
   refreshShape() {
@@ -702,33 +723,26 @@ export class GenerateLineComponent implements OnInit {
   };
 
   onMouseDown(event) {
-    if (!this.isPart && this.isCanvasMinimized) {
-      this.previousIterations = [];
+    if (this.vertexVisibility) {
+      const intersects = this.raycaster.intersectObjects(this.scene.children);
       
-      this.rotateMainObjectWithValue(-this.shape.rotation);
-      this.initialIteration = cloneDeep(this.shape.points);
-      this.toggleMinimize();
-    } else {
-      if (this.vertexVisibility) {
-        const intersects = this.raycaster.intersectObjects(this.scene.children);
+      // change color of the closest object intersecting the raycaster
+      if (intersects.length > 0) {
+        this.selectedObject = intersects[0].object  as THREE.Mesh;
         
-        // change color of the closest object intersecting the raycaster
-        if (intersects.length > 0) {
-          this.selectedObject = intersects[0].object  as THREE.Mesh;
-          
-          if (intersects[0].object.name === this.shape.name && intersects[1] && this.vertexVisibility) {
-            this.selectedObject = intersects[1].object  as THREE.Mesh;
-          }
-          
-          if (this.selectedObject && this.selectedObject.name.includes('Point')) {
-            this.currentShapeDuringPointMove = cloneDeep(this.shape.points);
-            (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
-            this.dragging = true;
-            this.startPosition = intersects[0].point.sub(this.selectedObject.position);
-          }
+        if (intersects[0].object.name === this.shape.name && intersects[1] && this.vertexVisibility) {
+          this.selectedObject = intersects[1].object  as THREE.Mesh;
+        }
+        
+        if (this.selectedObject && this.selectedObject.name.includes('Point')) {
+          this.currentShapeDuringPointMove = cloneDeep(this.shape.points);
+          (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xff0000);
+          this.dragging = true;
+          this.startPosition = intersects[0].point.sub(this.selectedObject.position);
         }
       }
     }
+    
   };
 
   onMouseUp(event) {
@@ -1056,11 +1070,5 @@ export class GenerateLineComponent implements OnInit {
     }
   }
 
-  onWindowResize() {
-    // this.canvasWidth = window.innerWidth / 2;
-    // this.canvasHeight = window.innerHeight / 2;
-    //this.camera.aspect = this.canvasWidth / this.canvasHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.canvasWidth, this.canvasHeight);
-  }
+  
 }

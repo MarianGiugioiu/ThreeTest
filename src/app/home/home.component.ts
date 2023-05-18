@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { cloneDeep } from 'lodash';
 import { GeneralService } from '../common/services/general.service';
 import { EventsService } from '../common/services/events.service';
-import { EventsEnum } from '../common/enums/events.enum';
 
 @Component({
   selector: 'app-home',
@@ -20,8 +19,11 @@ export class HomeComponent implements OnInit {
   public expandedShapeDetails: IShape;
   public selectedPart: IShape;
   public isEditingSurface = true;
+  public isGoingToEditSurface = false;
   public cameraRatio = 4;
   public updateFromShape = false;
+  public getImageData = {};
+  public pendingShape;
 
   constructor(
     public generalService: GeneralService,
@@ -30,6 +32,20 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.createSurface();
+  }
+
+  updateGetImageData(shape) {
+    this.getImageData[shape.name] = false;
+    if (this.isGoingToEditSurface) {
+      this.isGoingToEditSurface = false;
+      this.isEditingSurface = true;
+      this.expandedShapeDetails = undefined;
+    } else if (this.pendingShape) {
+      this.expandedShapeDetails = this.pendingShape;
+      this.pendingShape = undefined;
+    } else {
+      this.expandedShapeDetails = this.shapes[0];
+    }
   }
 
   addNewShape() {
@@ -59,7 +75,12 @@ export class HomeComponent implements OnInit {
         ]
       }
     );
-    this.expandedShapeDetails = this.shapes[0];
+    if (this.expandedShapeDetails) {
+      this.getImageData[this.expandedShapeDetails.name] = true;
+    }
+    if (this.shapes.length === 1 || !this.expandedShapeDetails) {
+      this.expandedShapeDetails = this.shapes[0];
+    }
   }
 
   createSurface() {
@@ -88,12 +109,20 @@ export class HomeComponent implements OnInit {
     }
   }
 
+  openShapeDetails(shape: IShape) {
+    if (this.expandedShapeDetails) {
+      this.pendingShape = shape;
+      this.getImageData[this.expandedShapeDetails.name] = true;
+    } else {
+      this.expandedShapeDetails = shape;
+    }
+  }
+
   updateShapeMinimization(event, shape: IShape) {
     this.selectedPart = undefined;
     if (event === true) {
       if (shape.id === 0) {
         this.isEditingSurface = false;
-        this.surface.wasInitialized = false;
       } else {
         this.expandedShapeDetails = undefined;
         this.parts = this.parts.map((item) => {
@@ -103,7 +132,6 @@ export class HomeComponent implements OnInit {
           if (item.id === shape.id) {
             item = cloneDeep(shape);
             item.name = partName;
-            item.wasInitialized = false;
             item.partId = partId;
             item.rotation = rotation;
           }
@@ -128,16 +156,13 @@ export class HomeComponent implements OnInit {
   }
 
   openSurfaceEdit() {
-    this.expandedShapeDetails = undefined;
-    this.selectedPart = undefined;
-    this.isEditingSurface = true;
-    this.shapes.forEach(item => item.wasInitialized = false);
-    this.parts.forEach(item => item.wasInitialized = false);
-    this.parts.forEach(item => {
-      console.log(item.rotation);
-      
-    })
-    this.evensService.publish(EventsEnum.toggleEditSurface);
+    if (this.expandedShapeDetails) {
+      this.isGoingToEditSurface = true;
+      this.getImageData[this.expandedShapeDetails.name] = true;
+    } else {
+      this.isEditingSurface = true;
+    }
+    
   }
 
   useShape(shape: IShape) {
@@ -145,7 +170,6 @@ export class HomeComponent implements OnInit {
     part.rotation = 0;
     part.name = this.createNewName('Part');
     part.partId = this.parts.length + 1;
-    part.wasInitialized = false;
     this.selectedPart = part;
     this.parts.unshift(part);
     this.updateFromShape = false;
