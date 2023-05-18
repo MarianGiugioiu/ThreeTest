@@ -15,6 +15,7 @@ import { WebglComponent } from './webgltest/webgl.component';
 import { FormsModule } from '@angular/forms';
 import { HomeComponent } from './home/home.component';
 import { PlaceShapesComponent } from './place-shapes/place-shapes.component';
+import { EditPartComponent } from './edit-part/edit-part.component';
 
 @NgModule({
   declarations: [
@@ -29,7 +30,8 @@ import { PlaceShapesComponent } from './place-shapes/place-shapes.component';
     RaycastingComponent,
     GenerateLineComponent,
     PlaceShapesComponent,
-    HomeComponent
+    HomeComponent,
+    EditPartComponent
   ],
   imports: [
     BrowserModule,

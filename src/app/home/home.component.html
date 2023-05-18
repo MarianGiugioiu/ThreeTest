@@ -4,13 +4,13 @@
         <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" [canRotate]="false" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
         <app-place-shapes *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" [updateFromShape]="updateFromShape" (updateMinimizationEvent)="updateShapeMinimization($event, surface)" (choosePartEvent)="choosePartFromSurface($event)"></app-place-shapes>
     </div>
-    <!-- <div *ngIf="!isEditingSurface" class="col">
+    <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">
-            <app-generate-line (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false" [canRotate]="selectedPart?.partId === part.partId" (updatePartRotationEvent)="updatePartRotation()"></app-generate-line>
+            <app-edit-part (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false" [canRotate]="selectedPart?.partId === part.partId" (updatePartRotationEvent)="updatePartRotation()"></app-edit-part>
             <button (click)="deletePart(i)">Delete</button>
             <label *ngIf="selectedPart?.partId === part.partId" >x</label>
         </div>
-    </div> -->
+    </div>
     <div *ngIf="!isEditingSurface" class="col shape-list-container">
         <button class="add-shape-button" (click)="addNewShape()">Add shape</button>
         <div class="row shape-container" *ngFor="let shape of shapes; let i = index;">
