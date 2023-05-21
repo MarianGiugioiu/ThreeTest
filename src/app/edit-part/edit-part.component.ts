@@ -43,7 +43,6 @@ export class EditPartComponent implements OnInit {
   @Input() isCanvasMinimized;
   @Input() canDoActions;
   @Input() canRotate;
-  @Input() isPart;
   @Input() isSurface;
   @Input() getImageData;
   @Output() updateMinimizationEvent = new EventEmitter();
@@ -60,9 +59,6 @@ export class EditPartComponent implements OnInit {
   private dragging = false;
   public selectedObject: THREE.Mesh;
   public selectedAdjacentObject: THREE.Mesh;
-  private startPosition;
-  private mouse: THREE.Vector2;
-  private raycaster: THREE.Raycaster;
   private font;
   private textOffset = new THREE.Vector2(-0.06, -0.07);
   public pressedKeys = [];
@@ -127,20 +123,11 @@ export class EditPartComponent implements OnInit {
   }
 
   async ngAfterViewInit() {
-    let ratio = 1;
-    if (this.isPart) {
-      this.canvasWidth = 150;
-      this.canvasHeight = 150;
-      ratio = 2;
-    } else if (this.isSurface) {
-      this.cameraRatio = 4;
-      ratio = 4;
-      this.textOffset.x = this.textOffset.x * 4;
-      this.textOffset.y = this.textOffset.y * 4;
-    }
+    this.canvasWidth = 150;
+    this.canvasHeight = 150;
+    let ratio = 2;
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
-
 
     this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
     this.renderer.shadowMap.enabled = true;
@@ -167,23 +154,12 @@ export class EditPartComponent implements OnInit {
     this.previousIterations = [];
     this.createPrimaryShape();
     
-    
-    if (!this.isPart && !this.isSurface) {
-      if (this.shape.rotation) {
-        this.rotateMainObjectWithValue(-this.shape.rotation);
-      }
-    } else {
-      
-    }
 
     this.initialIteration = cloneDeep(this.shape.points);
 
     if (!this.shape.wasInitialized) {
       this.shape.rotation = 0;
     }
-    
-    this.mouse = new THREE.Vector2();
-    this.raycaster = new THREE.Raycaster();
 
     this.onKeyDownListener = this.onKeyDown.bind(this);
     this.onKeyUpListener = this.onKeyUp.bind(this);
@@ -191,46 +167,28 @@ export class EditPartComponent implements OnInit {
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
       this.controls.update();
-      if (!this.isSurface) {
-        if (this.getImageData) {
-          this.getImageData1 = true;
-          this.getImageData = false;
-        } else {
-          if (this.getImageData1) {
-            this.getImageData1 = false;
-            this.shape.image = this.renderer.domElement.toDataURL("image/png");
-  
-            document.removeEventListener('keydown', this.onKeyDownListener);
-            document.removeEventListener('keyup', this.onKeyUpListener);
-  
-            this.renderer.dispose()
-            this.renderer.forceContextLoss();
-            this.updateGetImageDataEvent.emit();
-          }
+      if (this.getImageData) {
+        this.getImageData1 = true;
+        this.getImageData = false;
+      } else {
+        if (this.getImageData1) {
+          this.getImageData1 = false;
+          this.shape.image = this.renderer.domElement.toDataURL("image/png");
+          
+          document.removeEventListener('keydown', this.onKeyDownListener);
+          document.removeEventListener('keyup', this.onKeyUpListener);
+
+          this.renderer.dispose()
+          this.renderer.forceContextLoss();
+          this.updateGetImageDataEvent.emit();
         }
       }
     });
-    
 
     document.addEventListener('keydown', this.onKeyDownListener);
     document.addEventListener('keyup', this.onKeyUpListener);
 
     this.shape.wasInitialized = true;
-  }
-
-  
-
-  
-
-  save() {
-    if (!this.isSurface) {
-      this.rotateMainObjectWithValue(this.shape.rotation);
-    }
-    
-    this.initialIteration = undefined;
-    this.previousIterations = [];
-    this.getImageData = true;
-    this.toggleMinimize();
   }
 
   toggleMinimize() {
@@ -244,20 +202,17 @@ export class EditPartComponent implements OnInit {
   
 
   rotateMainObject(sign) {
-    
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(sign * this.mainObjectRotation);
     this.shape.rotation -= sign * this.mainObjectRotation;
     
     this.mainObject.geometry.applyMatrix4(rotationMatrix);
     
     this.shape.points.map((item, index) => {
-      item.object.position.applyMatrix4(rotationMatrix);
-      this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
-      item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
+      let newPos = new THREE.Vector3(item.point.x, item.point.y, 0);
+      newPos.applyMatrix4(rotationMatrix);
+      this.shape.points[index].point = new THREE.Vector2(newPos.x, newPos.y);
     });
-    if (this.isPart) {
-      this.updatePartRotationEvent.emit();
-    }
+    this.updatePartRotationEvent.emit();
   }
 
   rotateMainObjectWithValue(value) {
@@ -281,26 +236,6 @@ export class EditPartComponent implements OnInit {
     if (this.selectedAdjacentObject) {
       this.selectedAdjacentObject = this.shape.points.find(item => item.object.name === this.selectedAdjacentObject.name)?.object;
     }
-  }
-
-
-  
-
-  
-
-
-
-  refreshPoints() {
-    this.shape.points.map((item, index) => {
-      item.object.name = `Point_${index.toString()}`;
-      item.text.geometry = new TextGeometry(index.toString(), {
-        font: this.font,
-        size: 0.15 * this.cameraRatio,
-        height: 2,
-        curveSegments: 10,
-        bevelEnabled: false
-      });
-    });
   }
 
   createShape() {
@@ -332,7 +267,6 @@ export class EditPartComponent implements OnInit {
 
     shapeGeometry.closePath();
     
-    // Create a geometry from the shape
     return new THREE.ShapeGeometry(shapeGeometry);
   }
 
@@ -348,9 +282,9 @@ export class EditPartComponent implements OnInit {
     material.map.wrapT = THREE.RepeatWrapping;
     this.mainObject = new THREE.Mesh(this.createShape(), material);
     this.mainObject.name = this.shape.name;
-    const isVAlidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
+    const isValidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
 
-    if (!isVAlidShape) {
+    if (!isValidShape) {
       if (!this.mainObject.visible) {
         this.mainObject.visible = true;
       }

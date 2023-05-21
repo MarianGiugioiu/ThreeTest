@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { IShape } from '../generate-line/generate-line.component';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { IPoint, IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
 import { cloneDeep } from 'lodash';
 import { GeneralService } from '../common/services/general.service';
 import { EventsService } from '../common/services/events.service';
+import { PlaceShapesComponent } from '../place-shapes/place-shapes.component';
 
 @Component({
   selector: 'app-home',
@@ -11,6 +12,7 @@ import { EventsService } from '../common/services/events.service';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
+  @ViewChild('editedSurface') editedSurface: PlaceShapesComponent;
   public shapes: IShape[] = [];
   public parts: IShape[] = [];
   public surfaceParts: IShape[] = [];
@@ -24,6 +26,8 @@ export class HomeComponent implements OnInit {
   public updateFromShape = false;
   public getImageData = {};
   public pendingShape;
+  public pendingPart;
+  public cycleParts = -1;
 
   constructor(
     public generalService: GeneralService,
@@ -37,14 +41,34 @@ export class HomeComponent implements OnInit {
   updateGetImageData(shape) {
     this.getImageData[shape.name] = false;
     if (this.isGoingToEditSurface) {
+      this.selectedPart = undefined;
       this.isGoingToEditSurface = false;
       this.isEditingSurface = true;
       this.expandedShapeDetails = undefined;
-    } else if (this.pendingShape) {
-      this.expandedShapeDetails = this.pendingShape;
-      this.pendingShape = undefined;
+    }
+    if (shape.partId) {
+      if (this.pendingPart) {
+        this.selectedPart = this.pendingPart;
+        this.pendingPart = undefined;
+      } else if (this.cycleParts != -1) {
+        if (this.cycleParts === this.parts.length - 1) {
+          this.cycleParts = -1;
+          this.selectedPart = undefined;
+        } else {
+          this.cycleParts++;
+          this.selectedPart = this.parts[this.cycleParts];
+          this.getImageData[this.parts[this.cycleParts].name] = true;
+        }
+      } else {
+        this.selectedPart = undefined;
+      }
     } else {
-      this.expandedShapeDetails = this.shapes[0];
+      if (this.pendingShape) {
+        this.expandedShapeDetails = this.pendingShape;
+        this.pendingShape = undefined;
+      } else {
+        this.expandedShapeDetails = this.shapes[0];
+      }
     }
   }
 
@@ -81,6 +105,10 @@ export class HomeComponent implements OnInit {
     if (this.shapes.length === 1 || !this.expandedShapeDetails) {
       this.expandedShapeDetails = this.shapes[0];
     }
+    if (this.selectedPart) {
+      this.getImageData[this.selectedPart.name] = true;
+    }
+    
   }
 
   createSurface() {
@@ -116,6 +144,25 @@ export class HomeComponent implements OnInit {
     } else {
       this.expandedShapeDetails = shape;
     }
+    if (this.selectedPart) {
+      this.getImageData[this.selectedPart.name] = true;
+    }
+  }
+
+  toggleSelectPart(part: IShape) {
+    if (this.selectedPart?.partId === part.partId) {
+      this.getImageData[this.selectedPart.name] = true;
+    } else {
+      if (this.selectedPart) {
+        this.pendingPart = part;
+        this.getImageData[this.selectedPart.name] = true;
+      } else {
+        this.selectedPart = part;
+      }
+      if (this.expandedShapeDetails) {
+        this.getImageData[this.expandedShapeDetails.name] = true;
+      } 
+    }
   }
 
   updateShapeMinimization(event, shape: IShape) {
@@ -123,6 +170,7 @@ export class HomeComponent implements OnInit {
     if (event === true) {
       if (shape.id === 0) {
         this.isEditingSurface = false;
+        //Check when shape was rotated but not saved before opening surface edit
       } else {
         this.expandedShapeDetails = undefined;
         this.parts = this.parts.map((item) => {
@@ -130,7 +178,7 @@ export class HomeComponent implements OnInit {
           const partName = item.name;
           const rotation = item.rotation;
           if (item.id === shape.id) {
-            item = cloneDeep(shape);
+            item = this.mapShapeToPoint(shape);
             item.name = partName;
             item.partId = partId;
             item.rotation = rotation;
@@ -138,6 +186,11 @@ export class HomeComponent implements OnInit {
           this.rotatePart(item, -rotation);
           return item;
         });
+        if (this.parts.length) {
+          this.cycleParts = 0;
+          this.selectedPart = this.parts[this.cycleParts];
+          this.getImageData[this.parts[this.cycleParts].name] = true;
+        }
         this.updateFromShape = true;
         this.generateSurfaceParts();
       }
@@ -150,31 +203,57 @@ export class HomeComponent implements OnInit {
     const rotationMatrix = new THREE.Matrix4().makeRotationZ(value);
     
     part.points.map((item, index) => {
-      item.object.position.applyMatrix4(rotationMatrix);
-      part.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
+      let newPos = new THREE.Vector3(item.point.x, item.point.y, 0);
+      newPos.applyMatrix4(rotationMatrix);
+      part.points[index].point = new THREE.Vector2(newPos.x, newPos.y);
     });
   }
 
   openSurfaceEdit() {
+    this.editedSurface.ngOnDistroy();
     if (this.expandedShapeDetails) {
       this.isGoingToEditSurface = true;
       this.getImageData[this.expandedShapeDetails.name] = true;
-    } else {
+    } 
+    if (this.selectedPart) {
+      this.isGoingToEditSurface = true;
+      this.getImageData[this.selectedPart.name] = true;
+    }
+    if (!this.expandedShapeDetails && !this.selectedPart) {
       this.isEditingSurface = true;
     }
-    
+  }
+
+  mapShapeToPoint(shape: IShape) {
+    let points: IPoint[] = shape.points.map(item => {
+      return {
+        name: item.name,
+        type: item.type,
+        point: new THREE.Vector2(item.point.x, item.point.y)
+      }
+    });
+    let part: IShape = {
+      id: shape.id,
+      textureType: shape.textureType,
+      points
+    }
+    return part;
   }
 
   useShape(shape: IShape) {
-    let part = cloneDeep(shape);
+    let part = this.mapShapeToPoint(shape);
     part.rotation = 0;
     part.name = this.createNewName('Part');
     part.partId = this.parts.length + 1;
-    this.selectedPart = part;
     this.parts.unshift(part);
     this.updateFromShape = false;
     this.generateSurfaceParts();
-    
+    if (this.selectedPart) {
+      this.pendingPart = part;
+      this.getImageData[this.selectedPart.name] = true;
+    } else {
+      this.selectedPart = part;
+    }
   }
 
   deleteShape(i: number) {
@@ -184,21 +263,23 @@ export class HomeComponent implements OnInit {
   }
 
   deletePart(i: number) {
+    if (this.selectedPart.name === this.parts[i].name) {
+      this.selectedPart = undefined;
+    }
     this.parts.splice(i, 1);
     this.generateSurfaceParts();
   }
 
-  toggleSelectPart(part: IShape) {
-    if (this.selectedPart?.partId === part.partId) {
-      this.selectedPart = undefined;
+  choosePartFromSurface(event: number) {
+    let part = this.parts.find(item => item.partId === event);
+    if (this.selectedPart) {
+      if (part.name !== this.selectedPart.name) {
+        this.pendingPart = part;
+        this.getImageData[this.selectedPart.name] = true;
+      }
     } else {
       this.selectedPart = part;
     }
-  }
-
-  choosePartFromSurface(event: number) {
-    let part = this.parts.find(item => item.partId === event);
-    this.selectedPart = part;
   }
 
   createNewName(type) {
@@ -214,11 +295,6 @@ export class HomeComponent implements OnInit {
     return type + '_' + nextNumber;
   }
 
-  updateSurfacePart(part) {
-    this.surfaceParts = [...this.surfaceParts];
-    let surfacePartIndex = this.surfaceParts.findIndex(item => item.partId === part.partId);
-  }
-
   updatePartRotation() {
     this.updateFromShape = false;
     this.generateSurfaceParts();
@@ -228,9 +304,7 @@ export class HomeComponent implements OnInit {
     let positions = {};
     let rotations = {};
     this.surfaceParts.forEach(item => positions[item.name] = item.position);
-    this.parts.forEach(item => {
-      rotations[item.name] = item.rotation;
-    });
+    this.parts.forEach(item => rotations[item.name] = item.rotation);
     
     this.surfaceParts = [];
     this.parts.forEach(part => {
@@ -245,14 +319,5 @@ export class HomeComponent implements OnInit {
       });
     })
   };
-
-  getPart() {
-    // let items = [];
-    // this.shapes.forEach(item => items.push(item.shape));
-    // return items;
-    // return this.parts.map(item => item.shape);
-    // return [this.surface.shape]
-    
-  }
   
 }

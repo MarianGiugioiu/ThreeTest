@@ -1,12 +1,18 @@
 <div class="row page-container">
     <div class="col surface-container">
         <button *ngIf="!isEditingSurface" class="open-edit-surface-button" (click)="openSurfaceEdit()">Open edit</button>
-        <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" [canRotate]="false" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
-        <app-place-shapes *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" [updateFromShape]="updateFromShape" (updateMinimizationEvent)="updateShapeMinimization($event, surface)" (choosePartEvent)="choosePartFromSurface($event)"></app-place-shapes>
+        <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
+        <app-place-shapes #editedSurface *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" [updateFromShape]="updateFromShape" (updateMinimizationEvent)="updateShapeMinimization($event, surface)" (choosePartEvent)="choosePartFromSurface($event)"></app-place-shapes>
     </div>
     <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">
-            <app-edit-part (click)="toggleSelectPart(part)" [shape]="part" [isPart]="true" [isCanvasMinimized]="true" [canDoActions]="false" [canRotate]="selectedPart?.partId === part.partId" (updatePartRotationEvent)="updatePartRotation()"></app-edit-part>
+            <div class="col">
+                <label>{{part?.partId}}. {{part?.name}}</label>
+                <app-edit-part *ngIf="(selectedPart?.partId === part.partId)" (click)="toggleSelectPart(part)" [shape]="part" [getImageData]="getImageData[part.name]" (updateGetImageDataEvent)="updateGetImageData(part)" [isCanvasMinimized]="true" [canDoActions]="false" [canRotate]="selectedPart?.partId === part.partId" (updatePartRotationEvent)="updatePartRotation()"></app-edit-part>
+                <div *ngIf="!(selectedPart?.partId === part.partId)" (click)="toggleSelectPart(part)">
+                    <img width="150px" height="150px" [src]="part.image">
+                </div>
+            </div>
             <button (click)="deletePart(i)">Delete</button>
             <label *ngIf="selectedPart?.partId === part.partId" >x</label>
         </div>
@@ -14,14 +20,19 @@
     <div *ngIf="!isEditingSurface" class="col shape-list-container">
         <button class="add-shape-button" (click)="addNewShape()">Add shape</button>
         <div class="row shape-container" *ngFor="let shape of shapes; let i = index;">
-            <div class="col shape-usage">
-                <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="useShape(shape)">Use</button>
-                <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="deleteShape(i)">Delete</button>
+            <div class="col">
+                <label>{{shape?.id}}. {{shape?.name}}</label>
+                <div class="row">
+                    <div class="col shape-usage">
+                        <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="useShape(shape)">Use</button>
+                        <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="deleteShape(i)">Delete</button>
+                    </div>
+                    <div *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="openShapeDetails(shape)">
+                        <img width="150px" height="150px" [src]="shape.image">
+                    </div>
+                    <app-generate-line *ngIf="(shape.id === expandedShapeDetails?.id)" [shape]="shape" [getImageData]="getImageData[shape.name]" (updateGetImageDataEvent)="updateGetImageData(shape)" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="(shape.id === expandedShapeDetails?.id)" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
+                </div>
             </div>
-            <div *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="openShapeDetails(shape)">
-                <img width="150px" height="150px" [src]="shape.image">
-            </div>
-            <app-generate-line *ngIf="(shape.id === expandedShapeDetails?.id)" [shape]="shape" [getImageData]="getImageData[shape.name]" (updateGetImageDataEvent)="updateGetImageData(shape)" [isCanvasMinimized]="!(shape.id === expandedShapeDetails?.id)" [canDoActions]="(shape.id === expandedShapeDetails?.id)" [canRotate]="false" (updateMinimizationEvent)="updateShapeMinimization($event, shape)"></app-generate-line>
         </div>
     </div>
 </div>

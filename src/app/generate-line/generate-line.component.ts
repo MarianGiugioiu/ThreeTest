@@ -42,8 +42,6 @@ export class GenerateLineComponent implements OnInit {
   @Input() shape: IShape;
   @Input() isCanvasMinimized;
   @Input() canDoActions;
-  @Input() canRotate;
-  @Input() isPart;
   @Input() isSurface;
   @Input() getImageData;
   @Output() updateMinimizationEvent = new EventEmitter();
@@ -128,11 +126,7 @@ export class GenerateLineComponent implements OnInit {
 
   async ngAfterViewInit() {
     let ratio = 1;
-    if (this.isPart) {
-      this.canvasWidth = 150;
-      this.canvasHeight = 150;
-      ratio = 2;
-    } else if (this.isSurface) {
+    if (this.isSurface) {
       this.cameraRatio = 4;
       ratio = 4;
       this.textOffset.x = this.textOffset.x * 4;
@@ -168,12 +162,10 @@ export class GenerateLineComponent implements OnInit {
     this.createPrimaryShape();
     
     
-    if (!this.isPart && !this.isSurface) {
+    if (!this.isSurface) {
       if (this.shape.rotation) {
         this.rotateMainObjectWithValue(-this.shape.rotation);
       }
-    } else {
-      
     }
 
     this.initialIteration = cloneDeep(this.shape.points);
@@ -274,14 +266,17 @@ export class GenerateLineComponent implements OnInit {
   }
 
   save() {
-    if (!this.isSurface) {
-      this.rotateMainObjectWithValue(this.shape.rotation);
+    const isValidShape = this.geometryService.doesPolygonHaveIntersectingEdges(this.shape.points.map(item => item.point));
+    if (!isValidShape) {
+      if (!this.isSurface) {
+        this.rotateMainObjectWithValue(this.shape.rotation);
+      }
+      
+      this.initialIteration = undefined;
+      this.previousIterations = [];
+      this.getImageData = true;
+      this.toggleMinimize();
     }
-    
-    this.initialIteration = undefined;
-    this.previousIterations = [];
-    this.getImageData = true;
-    this.toggleMinimize();
   }
 
   toggleMinimize() {
@@ -313,9 +308,6 @@ export class GenerateLineComponent implements OnInit {
       this.shape.points[index].point = new THREE.Vector2(item.object.position.x, item.object.position.y);
       item.text.position.set(item.object.position.x + this.textOffset.x, item.object.position.y + this.textOffset.y, 0);
     });
-    if (this.isPart) {
-      this.updatePartRotationEvent.emit();
-    }
   }
 
   rotateMainObjectWithValue(value) {
@@ -361,7 +353,10 @@ export class GenerateLineComponent implements OnInit {
 
   createRegularPolygon() {
     if (this.regularPolygonEdgesNumber && !isNaN(this.regularPolygonEdgesNumber) && this.regularPolygonEdgesNumber >= 3) {
-      const radius = Math.sqrt(2) / 2;
+      let radius = Math.sqrt(2) / 2;
+      if (this.isSurface) {
+        radius *= 4;
+      }
       const n = this.regularPolygonEdgesNumber;
       const angle = (2 * Math.PI) / n;
       const vertices = [];
@@ -765,14 +760,11 @@ export class GenerateLineComponent implements OnInit {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (!this.pressedKeys.includes(event.key) && (this.canDoActions || this.canRotate)) {
+    if (!this.pressedKeys.includes(event.key) && this.canDoActions) {
       this.pressedKeys.push(event.key);
     }
-    if(this.shape.id !== 0) {
 
-    }
-
-    if (this.canDoActions || this.canRotate) {
+    if (this.canDoActions) {
       if (this.pressedKeys.includes('\\') && !this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
         this.isKeyPressed = true;
         this.rotateMainObject(1);
@@ -782,9 +774,7 @@ export class GenerateLineComponent implements OnInit {
         this.isKeyPressed = true;
         this.rotateMainObject(-1);
       }
-    }
 
-    if (this.canDoActions) {
       if (this.pressedKeys.includes('\\') && this.pressedKeys.includes('=') && this.pressedKeys.includes('+')) {
         this.isKeyPressed = true;
         this.sign = 1;
