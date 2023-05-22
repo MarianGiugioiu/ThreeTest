@@ -16,11 +16,11 @@ export interface IWorkspace {
 }
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss']
+  selector: 'app-workspace',
+  templateUrl: './workspace.component.html',
+  styleUrls: ['./workspace.component.scss']
 })
-export class HomeComponent implements OnInit {
+export class WorkspaceComponent implements OnInit {
   @ViewChild('editedSurface') editedSurface: PlaceShapesComponent;
   public shapes: IShape[] = [];
   public parts: IShape[] = [];

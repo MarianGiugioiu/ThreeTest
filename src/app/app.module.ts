@@ -13,7 +13,7 @@ import { RaycastingComponent } from './raycasting/raycasting.component';
 import { ShadersComponent } from './shaders/shaders.component';
 import { WebglComponent } from './webgltest/webgl.component';
 import { FormsModule } from '@angular/forms';
-import { HomeComponent } from './home/home.component';
+import { WorkspaceComponent } from './workspace/workspace.component';
 import { PlaceShapesComponent } from './place-shapes/place-shapes.component';
 import { EditPartComponent } from './edit-part/edit-part.component';
 
@@ -30,7 +30,7 @@ import { EditPartComponent } from './edit-part/edit-part.component';
     RaycastingComponent,
     GenerateLineComponent,
     PlaceShapesComponent,
-    HomeComponent,
+    WorkspaceComponent,
     EditPartComponent
   ],
   imports: [

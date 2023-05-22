@@ -106,10 +106,6 @@ export class EditPartComponent implements OnInit {
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
   }
 
-  async ngOnChanges(changes: SimpleChanges) {
-
-  }
-
   ngOnDistroy() {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
