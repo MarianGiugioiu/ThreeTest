@@ -112,11 +112,7 @@ export class GenerateLineComponent implements OnInit {
   }
 
   async ngOnChanges(changes: SimpleChanges) {
-    // for (let propName in changes) {
-    //   if (propName === 'isCanvasMinimized') {
-        
-    //   }
-    // }
+    
   }
 
   ngOnDistroy() {
@@ -557,7 +553,6 @@ export class GenerateLineComponent implements OnInit {
 
     shapeGeometry.closePath();
     
-    // Create a geometry from the shape
     return new THREE.ShapeGeometry(shapeGeometry);
   }
 
@@ -622,19 +617,11 @@ export class GenerateLineComponent implements OnInit {
     let mesh;
     if(type === 'line') {
       const squareGeometry = new THREE.BoxGeometry(0.2 * this.cameraRatio, 0.2 * this.cameraRatio, 1);
-  
-    // Create a material with white color
       const squareMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  
-      // Create a mesh from the geometry and material
       mesh = new THREE.Mesh(squareGeometry, squareMaterial);
     } else {
       const circleGeometry = new THREE.CircleGeometry(0.1 * this.cameraRatio, 32);
-  
-    // Create a material with white color
       const ciclreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  
-      // Create a mesh from the geometry and material
       mesh = new THREE.Mesh(circleGeometry, ciclreMaterial);
     }
 
@@ -720,8 +707,7 @@ export class GenerateLineComponent implements OnInit {
   onMouseDown(event) {
     if (this.vertexVisibility) {
       const intersects = this.raycaster.intersectObjects(this.scene.children);
-      
-      // change color of the closest object intersecting the raycaster
+
       if (intersects.length > 0) {
         this.selectedObject = intersects[0].object  as THREE.Mesh;
         

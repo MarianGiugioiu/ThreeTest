@@ -50,7 +50,6 @@ export class EditPartComponent implements OnInit {
   @Output() updateGetImageDataEvent = new EventEmitter();
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
-  //private camera: THREE.PerspectiveCamera;
   private camera: THREE.OrthographicCamera;
   private controls: OrbitControls;
   private ambientLight: THREE.AmbientLight;
@@ -105,16 +104,10 @@ export class EditPartComponent implements OnInit {
     this.textureLoader = new THREE.TextureLoader();
     this.fontLoader = new FontLoader();
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
-    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
-
   }
 
   async ngOnChanges(changes: SimpleChanges) {
-    // for (let propName in changes) {
-    //   if (propName === 'isCanvasMinimized') {
-        
-    //   }
-    // }
+
   }
 
   ngOnDistroy() {
@@ -134,12 +127,12 @@ export class EditPartComponent implements OnInit {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.camera = new THREE.OrthographicCamera(
-      this.canvasWidth / -200 * ratio, // left
-      this.canvasWidth / 200 * ratio, // right
-      this.canvasHeight / 200 * ratio, // top
-      this.canvasHeight / -200 * ratio, // bottom
-      1, // near
-      1000 // far
+      this.canvasWidth / -200 * ratio,
+      this.canvasWidth / 200 * ratio,
+      this.canvasHeight / 200 * ratio,
+      this.canvasHeight / -200 * ratio,
+      1,
+      1000
     );
     this.camera.position.set(0, 0, 10);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);

@@ -47,6 +47,8 @@ export class PlaceShapesComponent implements OnInit {
   public textures = [];
   public cameraRatio = 4;
 
+  checkIntersectionAfterUpdate = false;
+
   currentHeight;
   currentBh;
   mainObject: THREE.Mesh;
@@ -75,8 +77,6 @@ export class PlaceShapesComponent implements OnInit {
     this.textureLoader = new THREE.TextureLoader();
     this.fontLoader = new FontLoader();
     this.textures.push(this.textureLoader.load('https://images.unsplash.com/photo-1520699514109-b478c7b48d3b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cGF2ZW1lbnQlMjB0ZXh0dXJlfGVufDB8fDB8fA%3D%3D&w=1000&q=80'));
-    //this.scene.background = textureLoader.load('https://i0.wp.com/eos.org/wp-content/uploads/2022/09/scorpius-centaurus-ob-stellar-association.jpg?fit=1200%2C675&ssl=1');
-
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -98,7 +98,7 @@ export class PlaceShapesComponent implements OnInit {
         this.parts.reverse().forEach(item => this.drawMesh(item));
         
         if (this.partMeshes.length) {
-          this.checkMeshIntersects();
+          this.checkIntersectionAfterUpdate = true;
         }
       } 
     }
@@ -121,12 +121,12 @@ export class PlaceShapesComponent implements OnInit {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.camera = new THREE.OrthographicCamera(
-      this.canvasWidth / -200 * this.cameraRatio, // left
-      this.canvasWidth / 200 * this.cameraRatio, // right
-      this.canvasHeight / 200 * this.cameraRatio, // top
-      this.canvasHeight / -200 * this.cameraRatio, // bottom
-      1, // near
-      1000 // far
+      this.canvasWidth / -200 * this.cameraRatio,
+      this.canvasWidth / 200 * this.cameraRatio,
+      this.canvasHeight / 200 * this.cameraRatio,
+      this.canvasHeight / -200 * this.cameraRatio,
+      1,
+      1000
     );
     this.camera.position.set(0, 0, 10);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -148,10 +148,15 @@ export class PlaceShapesComponent implements OnInit {
     this.onMouseMoveListener = this.onMouseMove.bind(this);
     this.onMouseDownListener = this.onMouseDown.bind(this);
     this.onMouseUpListener = this.onMouseUp.bind(this);
+    this.checkIntersectionAfterUpdate = true;
     
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
       this.controls.update();
+      if (this.checkIntersectionAfterUpdate) {
+        this.checkMeshIntersects();
+        this.checkIntersectionAfterUpdate = false;
+      }
     });
     
     this.canvas.addEventListener('mousemove',  this.onMouseMoveListener);
@@ -279,14 +284,13 @@ export class PlaceShapesComponent implements OnInit {
     
     let localRatio = 4;
     const texture = this.textures[shape.textureType];
-    // Create a material for the lines
+    
     const material = new THREE.MeshBasicMaterial({ map: texture });
     material.map.repeat.set(0.25 / localRatio, 0.25 / localRatio);
     material.map.offset.set(0.5, 0.5);
     material.map.wrapS = THREE.RepeatWrapping;
     material.map.wrapT = THREE.RepeatWrapping;
     
-    // Create a line from the geometry and material
     let shapeGeometry = this.createShape(shape);
     var extrudeSettings = {
       depth: 0,
@@ -322,7 +326,7 @@ export class PlaceShapesComponent implements OnInit {
       bevelMesh.position.z = 0;
     } else {
       if (this.updateFromShape) {
-        // this.rotateObjectWithValue(shape);
+        
       }
     }
     this.scene.add(mesh);
@@ -370,7 +374,6 @@ export class PlaceShapesComponent implements OnInit {
   };
 
   onMouseUp(event) {
-    // (this.selectedObject.material as THREE.MeshPhongMaterial).color.set(0xffffff);
     this.dragging = false;
     this.choosePartEvent.emit(this.selectedPart.partId);
     this.selectedObject = undefined;

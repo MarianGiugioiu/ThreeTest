@@ -67,7 +67,7 @@ export class HomeComponent implements OnInit {
         this.expandedShapeDetails = this.pendingShape;
         this.pendingShape = undefined;
       } else {
-        this.expandedShapeDetails = this.shapes[0];
+        this.expandedShapeDetails = undefined;
       }
     }
   }
@@ -100,6 +100,7 @@ export class HomeComponent implements OnInit {
       }
     );
     if (this.expandedShapeDetails) {
+      this.pendingShape = this.shapes[0];
       this.getImageData[this.expandedShapeDetails.name] = true;
     }
     if (this.shapes.length === 1 || !this.expandedShapeDetails) {
@@ -170,7 +171,7 @@ export class HomeComponent implements OnInit {
     if (event === true) {
       if (shape.id === 0) {
         this.isEditingSurface = false;
-        //Check when shape was rotated but not saved before opening surface edit
+        //todo:Check when shape was rotated but not saved before opening surface edit
       } else {
         this.expandedShapeDetails = undefined;
         this.parts = this.parts.map((item) => {
