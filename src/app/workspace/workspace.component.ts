@@ -66,10 +66,13 @@ export class WorkspaceComponent implements OnInit {
         this.shapes = this.workspace.shapes;
         this.parts = this.workspace.parts;
         this.surfaceParts = this.workspace.parts;
+        this.isEditingSurface = false;
 
-        this.initOldShapes = 0;
-        this.expandedShapeDetails = this.shapes[this.initOldShapes];
-        this.getImageData[this.expandedShapeDetails.name] = true;
+        if (this.shapes.length) {
+          this.initOldShapes = 0;
+          this.expandedShapeDetails = this.shapes[this.initOldShapes];
+          this.getImageData[this.expandedShapeDetails.name] = true;
+        }
       }
     }
   }
@@ -122,9 +125,11 @@ export class WorkspaceComponent implements OnInit {
         } else {
           this.initOldShapes = -1;
           this.expandedShapeDetails = undefined;
-          this.initOldParts = 0;
-          this.selectedPart = this.parts[this.initOldParts];
-          this.getImageData[this.selectedPart.name] = true;
+          if (this.parts.length) {
+            this.initOldParts = 0;
+            this.selectedPart = this.parts[this.initOldParts];
+            this.getImageData[this.selectedPart.name] = true;
+          }
         }
       } else {
         this.expandedShapeDetails = undefined;
