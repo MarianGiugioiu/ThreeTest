@@ -51,63 +51,62 @@ export class HomeComponent implements OnInit {
         this.selectedPart = this.pendingPart;
         this.pendingPart = undefined;
       } else if (this.cycleParts != -1) {
-        if (this.cycleParts === this.parts.length - 1) {
+        this.cycleParts++;
+        const index = this.findNextPartIndexInList(shape.id, this.cycleParts);
+        if (index !== -1) {
+          console.log(index);
+          console.log(this.parts[index].name);
+          
+          this.selectedPart = this.parts[index];
+          this.getImageData[this.parts[index].name] = true;
+        } else {
           this.cycleParts = -1;
           this.selectedPart = undefined;
-        } else {
-          this.cycleParts++;
-          this.selectedPart = this.parts[this.cycleParts];
-          this.getImageData[this.parts[this.cycleParts].name] = true;
         }
       } else {
         this.selectedPart = undefined;
       }
     } else {
-      if (this.pendingShape) {
-        this.expandedShapeDetails = this.pendingShape;
-        this.pendingShape = undefined;
-      } else {
-        this.expandedShapeDetails = undefined;
-      }
+      this.expandedShapeDetails = undefined;
     }
   }
 
   addNewShape() {
-    this.selectedPart = undefined;
-    this.shapes.unshift(
-      {
-        id: this.shapes.length + 1,
-        name: this.createNewName('Shape'),
-        textureType: 0,
-        points:[
-          {
-            point: new THREE.Vector2(-0.5, -0.5),
-            type: 'line'
-          },
-          {
-            point: new THREE.Vector2(-0.5, 0.5),
-            type: 'line'
-          },
-          {
-            point: new THREE.Vector2(0.5, 0.5),
-            type: 'line'
-          },
-          {
-            point: new THREE.Vector2(0.5, -0.5),
-            type: 'line'
-          }
-        ]
-      }
-    );
-    if (this.expandedShapeDetails) {
-      this.pendingShape = this.shapes[0];
-      this.getImageData[this.expandedShapeDetails.name] = true;
-    }
-    if (this.shapes.length === 1 || !this.expandedShapeDetails) {
+    if (!this.expandedShapeDetails) {
+      this.selectedPart = undefined;
+      const id = this.createNewId('Shape');
+      const name = this.createNewName('Shape', id);
+      this.shapes.unshift(
+        {
+          id,
+          name,
+          textureType: 0,
+          points:[
+            {
+              point: new THREE.Vector2(-0.5, -0.5),
+              type: 'line'
+            },
+            {
+              point: new THREE.Vector2(-0.5, 0.5),
+              type: 'line'
+            },
+            {
+              point: new THREE.Vector2(0.5, 0.5),
+              type: 'line'
+            },
+            {
+              point: new THREE.Vector2(0.5, -0.5),
+              type: 'line'
+            }
+          ]
+        }
+      );
+      
       this.expandedShapeDetails = this.shapes[0];
-    }
-    if (this.selectedPart) {
-      this.getImageData[this.selectedPart.name] = true;
+      
+      if (this.selectedPart) {
+        this.getImageData[this.selectedPart.name] = true;
+      }
     }
     
   }
@@ -139,14 +138,11 @@ export class HomeComponent implements OnInit {
   }
 
   openShapeDetails(shape: IShape) {
-    if (this.expandedShapeDetails) {
-      this.pendingShape = shape;
-      this.getImageData[this.expandedShapeDetails.name] = true;
-    } else {
+    if (!this.expandedShapeDetails) {
       this.expandedShapeDetails = shape;
-    }
-    if (this.selectedPart) {
-      this.getImageData[this.selectedPart.name] = true;
+      if (this.selectedPart) {
+        this.getImageData[this.selectedPart.name] = true;
+      }
     }
   }
 
@@ -154,15 +150,14 @@ export class HomeComponent implements OnInit {
     if (this.selectedPart?.partId === part.partId) {
       this.getImageData[this.selectedPart.name] = true;
     } else {
-      if (this.selectedPart) {
-        this.pendingPart = part;
-        this.getImageData[this.selectedPart.name] = true;
-      } else {
-        this.selectedPart = part;
+      if (!this.expandedShapeDetails) {
+        if (this.selectedPart) {
+          this.pendingPart = part;
+          this.getImageData[this.selectedPart.name] = true;
+        } else {
+          this.selectedPart = part;
+        }
       }
-      if (this.expandedShapeDetails) {
-        this.getImageData[this.expandedShapeDetails.name] = true;
-      } 
     }
   }
 
@@ -183,14 +178,17 @@ export class HomeComponent implements OnInit {
             item.name = partName;
             item.partId = partId;
             item.rotation = rotation;
+            this.rotatePart(item, -rotation);
           }
-          this.rotatePart(item, -rotation);
           return item;
         });
         if (this.parts.length) {
           this.cycleParts = 0;
-          this.selectedPart = this.parts[this.cycleParts];
-          this.getImageData[this.parts[this.cycleParts].name] = true;
+          const index = this.findNextPartIndexInList(shape.id, this.cycleParts);
+          if (index !== -1) {
+            this.selectedPart = this.parts[index];
+            this.getImageData[this.parts[index].name] = true;
+          }
         }
         this.updateFromShape = true;
         this.generateSurfaceParts();
@@ -198,6 +196,19 @@ export class HomeComponent implements OnInit {
     } else {
       this.expandedShapeDetails = shape;
     }
+  }
+
+  findNextPartIndexInList(id, index) {
+    let count = -1;
+    for (let i = 0; i < this.parts.length; i++) {
+      if (this.parts[i].id === id) {
+        count++;
+      }
+      if (count === index) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   rotatePart(part: IShape, value: number) {
@@ -211,17 +222,15 @@ export class HomeComponent implements OnInit {
   }
 
   openSurfaceEdit() {
-    this.editedSurface.ngOnDistroy();
-    if (this.expandedShapeDetails) {
-      this.isGoingToEditSurface = true;
-      this.getImageData[this.expandedShapeDetails.name] = true;
-    } 
-    if (this.selectedPart) {
-      this.isGoingToEditSurface = true;
-      this.getImageData[this.selectedPart.name] = true;
-    }
-    if (!this.expandedShapeDetails && !this.selectedPart) {
-      this.isEditingSurface = true;
+    if (!this.expandedShapeDetails) {
+      this.editedSurface.ngOnDistroy();
+      if (this.selectedPart) {
+        this.isGoingToEditSurface = true;
+        this.getImageData[this.selectedPart.name] = true;
+      }
+      if (!this.selectedPart) {
+        this.isEditingSurface = true;
+      }
     }
   }
 
@@ -244,8 +253,8 @@ export class HomeComponent implements OnInit {
   useShape(shape: IShape) {
     let part = this.mapShapeToPoint(shape);
     part.rotation = 0;
-    part.name = this.createNewName('Part');
-    part.partId = this.parts.length + 1;
+    part.partId = this.createNewId('Part');
+    part.name = this.createNewName('Part', part.partId);
     this.parts.unshift(part);
     this.updateFromShape = false;
     this.generateSurfaceParts();
@@ -264,7 +273,7 @@ export class HomeComponent implements OnInit {
   }
 
   deletePart(i: number) {
-    if (this.selectedPart.name === this.parts[i].name) {
+    if (this.selectedPart?.name === this.parts[i].name) {
       this.selectedPart = undefined;
     }
     this.parts.splice(i, 1);
@@ -283,17 +292,35 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  createNewName(type) {
-    let list = this.shapes;
+  // createNewName(type) {
+  //   let list = this.shapes;
+  //   if (type === 'Part') {
+  //     list = this.parts;
+  //   }
+  //   let unnamedItems = list.filter(item => item.name.includes(type + '_'));
+  //   let unnamedItemsNumber = unnamedItems.map(item => {
+  //     return +item.name.replace(type + '_', '');
+  //   });
+  //   const nextNumber = this.generalService.findSmallestNumberNotInList(unnamedItemsNumber);
+  //   return type + '_' + nextNumber;
+  // }
+
+  createNewId(type) {
+    let id = 1;
     if (type === 'Part') {
-      list = this.parts;
+      if (this.parts.length) {
+        id = this.parts[0].partId + 1;
+      }
+    } else {
+      if (this.shapes.length) {
+        id = this.shapes[0].id + 1;
+      }
     }
-    let unnamedItems = list.filter(item => item.name.includes(type + '_'));
-    let unnamedItemsNumber = unnamedItems.map(item => {
-      return +item.name.replace(type + '_', '');
-    });
-    const nextNumber = this.generalService.findSmallestNumberNotInList(unnamedItemsNumber);
-    return type + '_' + nextNumber;
+    return id;
+  }
+
+  createNewName(type, id) {
+    return type + '_' + id;
   }
 
   updatePartRotation() {
