@@ -3,6 +3,7 @@
         <button *ngIf="!isEditingSurface" class="open-edit-surface-button" (click)="openSurfaceEdit()">Open edit</button>
         <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
         <app-place-shapes #editedSurface *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" [updateFromShape]="updateFromShape" (updateMinimizationEvent)="updateShapeMinimization($event, surface)" (choosePartEvent)="choosePartFromSurface($event)"></app-place-shapes>
+        <button *ngIf="!isEditingSurface" (click)="saveWorkspace()">Save</button>
     </div>
     <div *ngIf="!isEditingSurface" class="col">
         <div class="row" *ngFor="let part of parts; let i = index;">
@@ -25,6 +26,7 @@
                 <div class="row">
                     <div class="col shape-usage">
                         <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="useShape(shape)">Use</button>
+                        <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="duplicateShape(shape)">Duplicate</button>
                         <button *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="deleteShape(i)">Delete</button>
                     </div>
                     <div *ngIf="!(shape.id === expandedShapeDetails?.id)" (click)="openShapeDetails(shape)">

@@ -1,10 +1,19 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { IPoint, IShape } from '../generate-line/generate-line.component';
 import * as THREE from 'three';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, random } from 'lodash';
 import { GeneralService } from '../common/services/general.service';
 import { EventsService } from '../common/services/events.service';
 import { PlaceShapesComponent } from '../place-shapes/place-shapes.component';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface IWorkspace {
+  name: string;
+  id: string;
+  surface: IShape,
+  parts: IShape[],
+  shapes: IShape[]
+}
 
 @Component({
   selector: 'app-home',
@@ -54,9 +63,6 @@ export class HomeComponent implements OnInit {
         this.cycleParts++;
         const index = this.findNextPartIndexInList(shape.id, this.cycleParts);
         if (index !== -1) {
-          console.log(index);
-          console.log(this.parts[index].name);
-          
           this.selectedPart = this.parts[index];
           this.getImageData[this.parts[index].name] = true;
         } else {
@@ -71,9 +77,40 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  addNewShape() {
+  createNewPoints() {
+    return [
+      {
+        point: new THREE.Vector2(-0.5, -0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(-0.5, 0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(0.5, 0.5),
+        type: 'line'
+      },
+      {
+        point: new THREE.Vector2(0.5, -0.5),
+        type: 'line'
+      }
+    ]
+  }
+
+  copyPoints(shape: IShape) {
+    const pointsCopy = [];
+    shape.points.forEach(item => {
+      pointsCopy.push({
+        point: item.point,
+        type: item.type
+      });
+    });
+    return pointsCopy;
+  }
+
+  addNewShape(shape: IShape = undefined) {
     if (!this.expandedShapeDetails) {
-      this.selectedPart = undefined;
       const id = this.createNewId('Shape');
       const name = this.createNewName('Shape', id);
       this.shapes.unshift(
@@ -81,34 +118,20 @@ export class HomeComponent implements OnInit {
           id,
           name,
           textureType: 0,
-          points:[
-            {
-              point: new THREE.Vector2(-0.5, -0.5),
-              type: 'line'
-            },
-            {
-              point: new THREE.Vector2(-0.5, 0.5),
-              type: 'line'
-            },
-            {
-              point: new THREE.Vector2(0.5, 0.5),
-              type: 'line'
-            },
-            {
-              point: new THREE.Vector2(0.5, -0.5),
-              type: 'line'
-            }
-          ]
+          points: shape ? this.copyPoints(shape) : this.createNewPoints()
         }
       );
       
       this.expandedShapeDetails = this.shapes[0];
-      
+
       if (this.selectedPart) {
         this.getImageData[this.selectedPart.name] = true;
       }
-    }
-    
+    } 
+  }
+
+  duplicateShape(shape: IShape) {
+    this.addNewShape(shape);
   }
 
   createSurface() {
@@ -174,7 +197,7 @@ export class HomeComponent implements OnInit {
           const partName = item.name;
           const rotation = item.rotation;
           if (item.id === shape.id) {
-            item = this.mapShapeToPoint(shape);
+            item = this.mapShapeToPart(shape);
             item.name = partName;
             item.partId = partId;
             item.rotation = rotation;
@@ -234,7 +257,7 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  mapShapeToPoint(shape: IShape) {
+  mapShapeToPart(shape: IShape) {
     let points: IPoint[] = shape.points.map(item => {
       return {
         name: item.name,
@@ -244,6 +267,7 @@ export class HomeComponent implements OnInit {
     });
     let part: IShape = {
       id: shape.id,
+      name: shape.name,
       textureType: shape.textureType,
       points
     }
@@ -251,7 +275,7 @@ export class HomeComponent implements OnInit {
   }
 
   useShape(shape: IShape) {
-    let part = this.mapShapeToPoint(shape);
+    let part = this.mapShapeToPart(shape);
     part.rotation = 0;
     part.partId = this.createNewId('Part');
     part.name = this.createNewName('Part', part.partId);
@@ -292,19 +316,6 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  // createNewName(type) {
-  //   let list = this.shapes;
-  //   if (type === 'Part') {
-  //     list = this.parts;
-  //   }
-  //   let unnamedItems = list.filter(item => item.name.includes(type + '_'));
-  //   let unnamedItemsNumber = unnamedItems.map(item => {
-  //     return +item.name.replace(type + '_', '');
-  //   });
-  //   const nextNumber = this.generalService.findSmallestNumberNotInList(unnamedItemsNumber);
-  //   return type + '_' + nextNumber;
-  // }
-
   createNewId(type) {
     let id = 1;
     if (type === 'Part') {
@@ -330,9 +341,7 @@ export class HomeComponent implements OnInit {
 
   generateSurfaceParts() {
     let positions = {};
-    let rotations = {};
     this.surfaceParts.forEach(item => positions[item.name] = item.position);
-    this.parts.forEach(item => rotations[item.name] = item.rotation);
     
     this.surfaceParts = [];
     this.parts.forEach(part => {
@@ -343,9 +352,28 @@ export class HomeComponent implements OnInit {
         textureType: part.textureType,
         points: cloneDeep(part.points),
         position: positions[part.name],
-        rotation: rotations[part.name]
+        rotation: part.rotation
       });
     })
   };
+
+  generatePartsFromWorkSpace() {
+    
+  }
   
+  saveWorkspace() {
+    let newShapes = [];
+    this.shapes.forEach(item => {
+      newShapes.push(this.mapShapeToPart(item));
+    })
+    const workspace: IWorkspace = {
+      name: 'New Workspace',
+      id: uuidv4(),
+      surface: this.mapShapeToPart(this.surface),
+      parts: this.surfaceParts,
+      shapes: newShapes
+    };
+    console.log(workspace);
+    
+  }
 }
