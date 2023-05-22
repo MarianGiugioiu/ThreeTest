@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { WorkspaceComponent } from './workspace/workspace.component';
 import { PlaceShapesComponent } from './place-shapes/place-shapes.component';
 import { EditPartComponent } from './edit-part/edit-part.component';
+import { HomeComponent } from './home/home.component';
 
 @NgModule({
   declarations: [
@@ -31,7 +32,8 @@ import { EditPartComponent } from './edit-part/edit-part.component';
     GenerateLineComponent,
     PlaceShapesComponent,
     WorkspaceComponent,
-    EditPartComponent
+    EditPartComponent,
+    HomeComponent
   ],
   imports: [
     BrowserModule,

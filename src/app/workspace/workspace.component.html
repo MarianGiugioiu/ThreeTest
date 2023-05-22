@@ -1,5 +1,5 @@
 <div class="row page-container">
-    <div class="col surface-container">
+    <div *ngIf="surface"  class="col surface-container">
         <button *ngIf="!isEditingSurface" class="open-edit-surface-button" (click)="openSurfaceEdit()">Open edit</button>
         <app-generate-line *ngIf="isEditingSurface"  [shape]="surface" [isSurface]=true [canDoActions]="isEditingSurface" (updateMinimizationEvent)="updateShapeMinimization($event, surface)"></app-generate-line>
         <app-place-shapes #editedSurface *ngIf="!isEditingSurface" [surface]="surface" [parts]="surfaceParts" [selectedPart]="selectedPart" [updateFromShape]="updateFromShape" (updateMinimizationEvent)="updateShapeMinimization($event, surface)" (choosePartEvent)="choosePartFromSurface($event)"></app-place-shapes>

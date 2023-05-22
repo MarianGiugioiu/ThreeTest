@@ -6,13 +6,15 @@ import { GeneralService } from '../common/services/general.service';
 import { EventsService } from '../common/services/events.service';
 import { PlaceShapesComponent } from '../place-shapes/place-shapes.component';
 import { v4 as uuidv4 } from 'uuid';
+import { WorkspaceService } from '../common/services/api/workspace.service';
+import { ActivatedRoute, Router } from '@angular/router';
 
 export interface IWorkspace {
-  name: string;
-  id: string;
-  surface: IShape,
-  parts: IShape[],
-  shapes: IShape[]
+  name?: string;
+  id?: string;
+  surface?: IShape,
+  parts?: IShape[],
+  shapes?: IShape[]
 }
 
 @Component({
@@ -22,6 +24,8 @@ export interface IWorkspace {
 })
 export class WorkspaceComponent implements OnInit {
   @ViewChild('editedSurface') editedSurface: PlaceShapesComponent;
+  public workspaceId: string;
+  public workspace: IWorkspace;
   public shapes: IShape[] = [];
   public parts: IShape[] = [];
   public surfaceParts: IShape[] = [];
@@ -38,16 +42,40 @@ export class WorkspaceComponent implements OnInit {
   public pendingPart;
   public cycleParts = -1;
 
+  public initOldShapes = -1;
+  public initOldParts = -1;
+
   constructor(
     public generalService: GeneralService,
-    public evensService: EventsService
+    public evensService: EventsService,
+    public workspaceService: WorkspaceService,
+    public router: Router,
+    private route: ActivatedRoute
     ) { }
 
   ngOnInit(): void {
-    this.createSurface();
+    this.workspaceId = this.route.snapshot.paramMap.get('id');
+    if (this.workspaceId === 'new') {
+      this.createSurface();
+    } else {
+      this.workspace = this.workspaceService.get(this.workspaceId);
+      if (!this.workspace) {
+        this.router.navigate(['/']);
+      } else {
+        this.surface = this.workspace.surface;
+        this.shapes = this.workspace.shapes;
+        this.parts = this.workspace.parts;
+        this.surfaceParts = this.workspace.parts;
+
+        this.initOldShapes = 0;
+        this.expandedShapeDetails = this.shapes[this.initOldShapes];
+        this.getImageData[this.expandedShapeDetails.name] = true;
+      }
+    }
   }
 
   updateGetImageData(shape) {
+    // Go to edit surface
     this.getImageData[shape.name] = false;
     if (this.isGoingToEditSurface) {
       this.selectedPart = undefined;
@@ -57,9 +85,11 @@ export class WorkspaceComponent implements OnInit {
     }
     if (shape.partId) {
       if (this.pendingPart) {
+        // When another part is clicked
         this.selectedPart = this.pendingPart;
         this.pendingPart = undefined;
-      } else if (this.cycleParts != -1) {
+      } else if (this.cycleParts !== -1) {
+        //When a shape is changed and the corresponding parts need to be changed
         this.cycleParts++;
         const index = this.findNextPartIndexInList(shape.id, this.cycleParts);
         if (index !== -1) {
@@ -69,11 +99,36 @@ export class WorkspaceComponent implements OnInit {
           this.cycleParts = -1;
           this.selectedPart = undefined;
         }
+      } else if (this.initOldParts !== -1) {
+        // When the workspace is recreated
+        this.initOldParts++;
+        if (this.initOldParts < this.parts.length) {
+          this.selectedPart = this.parts[this.initOldParts];
+          this.getImageData[this.selectedPart.name] = true;
+        } else {
+          this.initOldParts = -1;
+          this.selectedPart = undefined;
+        }
       } else {
         this.selectedPart = undefined;
       }
     } else {
-      this.expandedShapeDetails = undefined;
+      if (this.initOldShapes !== -1) {
+        // When the workspace is recreated
+        this.initOldShapes++;
+        if (this.initOldShapes < this.shapes.length) {
+          this.expandedShapeDetails = this.shapes[this.initOldShapes];
+          this.getImageData[this.expandedShapeDetails.name] = true;
+        } else {
+          this.initOldShapes = -1;
+          this.expandedShapeDetails = undefined;
+          this.initOldParts = 0;
+          this.selectedPart = this.parts[this.initOldParts];
+          this.getImageData[this.selectedPart.name] = true;
+        }
+      } else {
+        this.expandedShapeDetails = undefined;
+      }
     }
   }
 
@@ -356,10 +411,6 @@ export class WorkspaceComponent implements OnInit {
       });
     })
   };
-
-  generatePartsFromWorkSpace() {
-    
-  }
   
   saveWorkspace() {
     let newShapes = [];
@@ -367,13 +418,17 @@ export class WorkspaceComponent implements OnInit {
       newShapes.push(this.mapShapeToPart(item));
     })
     const workspace: IWorkspace = {
-      name: 'New Workspace',
-      id: uuidv4(),
+      name: this.workspaceId === 'new' ? 'New Workspace' : this.workspace.name,
+      id: this.workspaceId === 'new' ? uuidv4() : this.workspaceId,
       surface: this.mapShapeToPart(this.surface),
       parts: this.surfaceParts,
       shapes: newShapes
     };
-    console.log(workspace);
-    
+    if (this.workspaceId === 'new') {
+      this.workspaceService.add(workspace);
+    } else {
+      this.workspaceService.update(workspace);
+    }
+    this.router.navigate(['/']);
   }
 }
