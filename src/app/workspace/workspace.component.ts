@@ -35,7 +35,7 @@ export class WorkspaceComponent implements OnInit {
   public selectedPart: IShape;
   public isEditingSurface = true;
   public isGoingToEditSurface = false;
-  public cameraRatio = 4;
+  public cameraRatio = 12; //Modificare suprafata
   public updateFromShape = false;
   public getImageData = {};
   public pendingShape;

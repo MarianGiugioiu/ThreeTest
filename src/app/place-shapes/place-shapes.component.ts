@@ -33,8 +33,8 @@ export class PlaceShapesComponent implements OnInit {
   private camera: THREE.OrthographicCamera;
   private controls: OrbitControls;
   private ambientLight: THREE.AmbientLight;
-  private canvasWidth = 300;
-  private canvasHeight = 300;
+  private canvasWidth = 450;
+  private canvasHeight = 450;
   private dragging = false;
   public selectedObject: THREE.Mesh;
   private startPosition;
@@ -45,7 +45,7 @@ export class PlaceShapesComponent implements OnInit {
   public mainObjectRotation = Math.PI / 45;
   public regularPolygonEdgesNumber: number = 4;
   public textures = [];
-  public cameraRatio = 4;
+  public cameraRatio = 4; //Modificare suprafata
 
   checkIntersectionAfterUpdate = false;
 

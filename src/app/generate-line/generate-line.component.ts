@@ -111,10 +111,6 @@ export class GenerateLineComponent implements OnInit {
 
   }
 
-  async ngOnChanges(changes: SimpleChanges) {
-    
-  }
-
   ngOnDistroy() {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
@@ -123,10 +119,10 @@ export class GenerateLineComponent implements OnInit {
   async ngAfterViewInit() {
     let ratio = 1;
     if (this.isSurface) {
-      this.cameraRatio = 4;
-      ratio = 4;
-      this.textOffset.x = this.textOffset.x * 4;
-      this.textOffset.y = this.textOffset.y * 4;
+      ratio = 12; //Modificare suprafata
+      this.cameraRatio = ratio;
+      this.textOffset.x = this.textOffset.x * ratio;
+      this.textOffset.y = this.textOffset.y * ratio;
     }
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
