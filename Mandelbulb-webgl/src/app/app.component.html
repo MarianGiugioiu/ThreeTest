@@ -1,0 +1,171 @@
+<table class="fullbody"><tr><td>
+
+
+  <div class="header">
+    <h1>MandelBulb</h1>
+    <h3>By: Michael Jewell, Jesse Altman, Shane Christy, Kayla Artinyan</h3>
+    <h4>WARNING! This is graphic intensive. Use a high end computer for best performance.
+    <br />
+    Requires Linux or Mac OS X to run. Chrome Browser prefered.</h4>
+    <hr width="65%" />
+    <br />
+  </div>
+  
+  <div class="canvas">    
+    <canvas id="mandelBulb" style="border: none;" width="500" height="500"></canvas>
+  </div>
+  
+  <div class="stats">
+  
+    <h2>Current Statistics</h2>
+    <u>FPS:</u> <input type="text" id="fps" value="0.0" size="8"  class="statBox"/>
+  
+    <br /><br />
+  
+    <u>Camera Direction:</u>&nbsp;&nbsp;
+    X:&nbsp;&nbsp;<input type="text" id="cameraDirectionX" value="0.0" size="6" class="statBox" />
+    Y:&nbsp;&nbsp;<input type="text" id="cameraDirectionY" value="0.0" size="6" class="statBox" />
+    Z:&nbsp;&nbsp;<input type="text" id="cameraDirectionZ" value="-1.0" size="6" class="statBox" />
+  
+    <br/>
+    
+    <u>Camera Position:</u>&nbsp;&nbsp;&nbsp;&nbsp;
+    X:&nbsp;&nbsp;<input type="text" id="cameraPosX" value="0.0" size="6" class="statBox" />
+    Y:&nbsp;&nbsp;<input type="text" id="cameraPosY" value="0.0" size="6" class="statBox" />
+    Z:&nbsp;&nbsp;<input type="text" id="cameraPosZ" value="2.0" size="6" class="statBox" />
+  
+    <br/><br />
+  
+    <u>Camera Distance to fractal:</u>&nbsp;
+    <input type="text" id="cameraDistance" value="0.0" class="statBox" size="20" /> <br/>
+  
+    <br />
+    <h2>Controls:</h2>
+  
+    <ul>
+      <li>Move Forward/Backwards -- W/S</li>
+      <li>Move Left/Right -- A/D</li>
+      <li>Move Up/Down -- E/C</li>
+      <br />
+      <li>Rotate Up/Down -- I/K</li>
+      <li>Rotate Left/Right -- J/L</li>
+      <li>Roll Left/Right -- U/O</li>
+    </ul>
+  
+    <h2>Presets</h2>
+  
+    <input type="button" value="1" (click)="preset(1)" />
+    <input type="button" value="2" (click)="preset(2)" />
+    <input type="button" value="3" (click)="preset(3)" />
+    <input type="button" value="4" (click)="preset(4)" />
+    <input type="button" value="5" (click)="preset(5)" />
+    <input type="button" value="6" (click)="preset(6)" />
+    <input type="button" value="7" (click)="preset(7)" />
+    <input type="button" value="8" (click)="preset(8)" /><br />
+    <input type="button" value="9" (click)="preset(9)" />
+    <input type="button" value="10" (click)="preset(10)" />
+    <input type="button" value="11" (click)="preset(11)" />
+  
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <input type="checkbox" id="stop" />Stop
+  
+  
+  
+    
+  </div>
+  
+  <div class="close">
+    <br />
+  </div>
+  
+  
+  <div class="all">
+  
+    <h2>Variables</h2>
+  
+    <div class="allLeft">
+      <u>Fractal Set</u><br />
+      <input id="mandelbrot" type="radio" name="fractalGroup" checked/>Mandelbrot<br />
+      <input id="julia" type="radio" name="fractalGroup" />Julia 
+    </div>
+    
+    <div class="allRight">
+      <u>Other Shading Styles</u><br />
+      <input id="phongNoise" type="radio" name="shading" />Phong and Noise<br />
+      <input id="normal" type="radio" name="shading" />Normals<br />
+      <input id="none" type="radio" name="shading" />None
+    </div>
+  
+    <div class="close">
+      <br />
+    </div>
+  
+    
+  
+    Iterate Powers <input type="checkbox" id="iteratePowers" value="iterate" checked /><br/>
+    
+    Power: <input type="text" id="power" value="8" class="checked" size="8" /><br />
+    
+    Max Iterations (provides finer detail):
+    <input id="maxIterations" type="range" min="0" max="50" value="10" step="1" 
+    onchange="showValue('iterationValue', this.value)" />
+    &nbsp;&nbsp;&nbsp;&nbsp;	
+    <span id="iterationValue">10</span>
+  
+    <br/><br />
+  
+    Antialiasing (minimizes distortion / slows rendering exponentially):<br />
+    <input id="antialiasing1" type="radio" name="aavalue" onchange="aaChange(1)" checked />1x
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <input id="antialiasing2" type="radio" name="aavalue" onchange="aaChange(2)" />2x
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <input id="antialiasing3" type="radio" name="aavalue" onchange="aaChange(3)" />3x
+  
+    <br/><br />
+  
+  
+  
+  </div>
+  
+  
+  
+  <div class="phong">
+    <h2>Phong Variables</h2>
+  
+    <input id="phong" type="radio" name="shading" checked />Phong Shading
+  
+    <br /><br />
+  
+    Color Change Speed: <input type="text" id="colorChange" value="1" size="6" /><br />
+    Ambient Red:&nbsp;&nbsp;&nbsp;&nbsp;
+    <input type="text" id="ambientRed" value="0.5" size="6" /><br />
+    Ambient Green:&nbsp;
+    <input type="text" id="ambientGreen" value="0.5" size="6" /><br />
+    Ambient Blue:&nbsp;&nbsp;&nbsp;
+    <input type="text" id="ambientBlue" value="0.9" size="6" /><br/>
+  
+  </div>
+  
+  
+  
+  <div class="noise">
+    <h2>Noise Variables</h2>
+  
+    <input id="noise" type="radio" name="shading" />Noise Shading
+  
+    <br /><br />
+  
+    <input id="marble" type="radio" name="noiseType" checked/>Marble<br />
+    <input id="original" type="radio" name="noiseType" />Standard
+  
+    <br /><br />
+  
+    Lacunarity: <input id="lacunarity" type="text" value="2.0" size="6" /><br />
+    Gain: <input id="gain" type="text" value="0.5" size="6" /><br />
+    Octaves: <input id="octaves" type="text" value="50" size="6" /><br/>
+  </div>
+  
+  
+  <!-- The end of the full body table -->
+  </td></tr></table>
+<router-outlet></router-outlet>

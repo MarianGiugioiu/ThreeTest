@@ -1,0 +1,87 @@
+/* You can add global styles to this file, and also import other style files */
+
+body{
+	width:1000px;
+	background-color:#EEEEEE;
+	border-style:ridge;
+	border-width:3px;
+	border-color:#999999;
+	margin: 0px auto 0px auto;
+}
+
+table.fullbody{
+	width:100%;
+	background-color:#739BC9;	
+	padding:10px;
+}
+
+div.canvas{
+	float:left;
+	width:500px;
+	margin-left:auto;
+	margin-right:auto;
+	border-style:ridge;
+	border-width:3px;
+	border-color:#999999;
+}
+
+
+div.stats{
+	margin-left:55%;
+	width:45%;
+}
+
+div.close{
+	clear:both;
+}
+
+div.header{
+	clear:both;
+	text-align:center;
+	margin-left:auto;
+	margin-right:auto;
+}
+
+div.all{
+	float:left;
+	background-color:#739BC9;
+	width:34%;
+}
+
+div.phong{
+	float:left;
+	background-color:#739BC9;
+	width:33%;
+}
+
+div.noise{
+	float:left;
+	background-color:#739BC9;
+	width:33%;
+}
+
+div.allRight{
+	float:left;
+	width:45%;
+}
+
+div.allLeft{
+	float:left;
+	width:40%;
+}
+
+input.statBox{
+	border-width: 0px;
+	background-color: #739BC9;
+}
+
+.unchecked{
+	border: inset;
+	border-width: 2px;
+	background-color: #ffffff;
+}
+
+.checked{
+	border: none;
+	background-color: #739BC9;
+}
